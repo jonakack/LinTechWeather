@@ -16,3 +16,5 @@ make run-server     - Just run server
 make run-client     - Just run client
 make clean          - Clean all build files
 _______________________________________________________________________
+
+main.c → http.c → tcp.c → Network
