@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 
-HTTP_Get(char URL)
+void HTTPClient_Get(const char* _Path, const char* _Host)
 {
-    GET HTTP1.1 / hduasuea
-    www.google.com\r\n
-    dshahsduiaw
-
-    TCP_
+    
 }
