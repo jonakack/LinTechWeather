@@ -2,6 +2,10 @@
 	
 	int main()
 	{
+
+		char *URL = "http://www.google.com";
+
+		
 		TCPClient client;
 		uint8_t buffer[1024];
 		const char* message = "Hello from client!\r\n";

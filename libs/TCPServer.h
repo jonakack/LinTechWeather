@@ -15,14 +15,17 @@
 
 #define MAX_CLIENTS 10
 
+int (*TCPServer_OnAccept)(int _Socketfd, void* context);
+
 typedef struct
 {
     int listen_fd;
     TCPClient clients[MAX_CLIENTS];
-
+	TCPServer_OnAccept onAccept;
+	void* context;
 } TCPServer;
 
-int TCPServer_Initiate(TCPServer* _Server, const char * _Port);
+int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* context);
 
 // int TCPServer_Listen();
 

@@ -1,12 +1,15 @@
 #include "TCPServer.h"
 #include "TCPClient.h"
 
-int TCPServer_Initiate(TCPServer* _Server, const char* _Port)
+int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* context)
 {
+    _Server->onAccept = _OnAccept;
+    _Server->context = context;
     struct addrinfo hints = {0}, *result = NULL;
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
+    
 
     if(getaddrinfo(NULL, _Port, &hints, &result) != 0)
         return -1;
@@ -62,6 +65,9 @@ int TCPServer_Accept(TCPServer* _Server)
     }
 
     TCPServer_Nonblocking(client_fd);
+
+    _Server->onAccept(client_fd, _Server->context);
+    
 
     // Find available spot
     for (int i = 0; i < MAX_CLIENTS; i++)
