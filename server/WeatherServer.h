@@ -4,7 +4,7 @@
 
 #include "smw.h"
 #include "linked_list.h"
-#include "HTTPServer/HTTPServer.h"
+#include "HTTPServer.h"
 
 #include "WeatherServerInstance.h"
 

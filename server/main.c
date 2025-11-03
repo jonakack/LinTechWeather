@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "../libs/TCPServer.h"
+#include "TCPServer.h"
 
 // Callback function to handle client connections
 int handle_client(int _Client_fd, void* _Context)

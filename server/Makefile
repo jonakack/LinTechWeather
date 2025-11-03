@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -MMD -MP -std=c11 -I../libs
+CFLAGS := -Wall -Wextra -MMD -MP -std=c11 -I../libs -I../libs/HTTPServer
 LIBS_DIR := ../libs
 BUILD_DIR := build
 

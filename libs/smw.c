@@ -29,6 +29,7 @@ smw_task* smw_createTask(void* _Context, void (*_Callback)(void* _Context, uint6
             return &g_smw.tasks[i];
         }
     }
+    return 0;
 }
 
 void smw_destroyTask(smw_task* _Task)

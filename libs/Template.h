@@ -1,22 +1,22 @@
 
-#ifndef __Template_h_
-#define __Template_h_
+// #ifndef __Template_h_
+// #define __Template_h_
 
-#include "smw.h"
+// #include "smw.h"
 
-typedef struct
-{
+// typedef struct
+// {
 
-	smw_task* task;
+// 	smw_task* task;
 
-} Template;
-
-
-int Template_Initiate(Template* _Server);
-int Template_InitiatePtr(Template** _ServerPtr);
+// } Template;
 
 
-void Template_Dispose(Template* _Server);
-void Template_DisposePtr(Template** _ServerPtr);
+// int Template_Initiate(Template* _Server);
+// int Template_InitiatePtr(Template** _ServerPtr);
 
-#endif //__Template_h_
+
+// void Template_Dispose(Template* _Server);
+// void Template_DisposePtr(Template** _ServerPtr);
+
+// #endif //__Template_h_
