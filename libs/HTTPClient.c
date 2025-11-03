@@ -71,7 +71,7 @@ int HTTPClient_Get(const char *_URL)
     printf("Connecting to %s:%d%s\n", parsed.host, parsed.port, parsed.path);
 
     // Build HTTP GET request string
-    char request[1024];
+    char request[2048];
     snprintf(request, sizeof(request),
              "GET %s HTTP/1.1\r\n"
              "Host: %s\r\n"
