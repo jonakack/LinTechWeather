@@ -1,5 +1,6 @@
-#ifndef __TCPSERVER_H
-#define __TCPSERVER_H
+
+#ifndef __TCPServer_h_
+#define __TCPServer_h_
 
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
@@ -11,29 +12,30 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "TCPClient.h"
+#include "smw.h"
 
 #define MAX_CLIENTS 10
 
-int (*TCPServer_OnAccept)(int _Socketfd, void* context);
+typedef int (*TCPServer_OnAccept)(int client_fd, void* context);
 
 typedef struct
 {
-    int listen_fd;
-    TCPClient clients[MAX_CLIENTS];
+	int listen_fd;
+
 	TCPServer_OnAccept onAccept;
 	void* context;
+
+	smw_task* task;
+
 } TCPServer;
 
-int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* context);
 
-// int TCPServer_Listen();
+int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context);
+int TCPServer_InitiatePtr(const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context, TCPServer** _ServerPtr);
 
-int TCPServer_Accept(TCPServer* _Server);
-
-void TCPServer_Work(TCPServer* _Server);
 
 void TCPServer_Dispose(TCPServer* _Server);
+void TCPServer_DisposePtr(TCPServer** _ServerPtr);
 
 static inline int TCPServer_Nonblocking(int fd)
 {
@@ -44,4 +46,4 @@ static inline int TCPServer_Nonblocking(int fd)
 	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-#endif // __TCPSERVER_H
+#endif //__TCPServer_h_

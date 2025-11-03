@@ -1,30 +1,45 @@
+
+
 #include "TCPClient.h"
 
-int TCPClient_Initiate(TCPClient* _Client)
+int TCPClient_Initiate(TCPClient* c, int fd)
 {
-    _Client->fd =-1;
-    return 0;
+	c->fd = fd;
+	return 0;
 }
 
-int TCPClient_Connect(TCPClient* _Client, const char* host, const char* port)
+int TCPClient_Connect(TCPClient* c, const char *host, const char *port)
 {
-    struct addrinfo hints = {0}, *res = NULL;
+	if(c->fd >= 0)
+		return -1;
+
+    struct addrinfo hints = {0};
+	struct addrinfo* res = NULL;
+
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
     if (getaddrinfo(host, port, &hints, &res) != 0)
         return -1;
 
-    
+	/*
+	Funktionen getaddrinfo() kan ge en länkad lista av adressförslag för samma värd och port.
+	Till exempel kan en server ha både IPv4- och IPv6-adresser, eller flera nätverkskort.
+
+	Varje nod i listan (struct addrinfo) innehåller en möjlig adress att prova.
+	Om första adressen inte fungerar (t.ex. connect() misslyckas), försöker man nästa.
+	*/
+	
     int fd = -1;
-    for (struct addrinfo *resPtr = res; resPtr; resPtr = resPtr->ai_next)
+    for (struct addrinfo *rp = res; rp; rp = rp->ai_next)
 	{
-        fd = socket(resPtr->ai_family, resPtr->ai_socktype, resPtr->ai_protocol);
+        fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 
         if (fd < 0)
 			continue;
 
-        if (connect(fd, resPtr->ai_addr, resPtr->ai_addrlen) == 0)
+        if (connect(fd, rp->ai_addr, rp->ai_addrlen) == 0)
 			break;
 
         close(fd);
@@ -35,29 +50,29 @@ int TCPClient_Connect(TCPClient* _Client, const char* host, const char* port)
     if (fd < 0)
 		return -1;
 
-    _Client->fd = fd;
+    c->fd = fd;
     return 0;
 }
 
-int TCPClient_Write(TCPClient* _Client, const uint8_t* buf, int len)
+int TCPClient_Write(TCPClient* c, const uint8_t* buf, int len)
 {
-    return send(_Client->fd, buf, len, MSG_NOSIGNAL);
+    return send(c->fd, buf, len, MSG_NOSIGNAL);
 }
 
-int TCPClient_Read(TCPClient* _Client, uint8_t* buf, int len)
+int TCPClient_Read(TCPClient* c, uint8_t* buf, int len)
 {
-    return recv(_Client->fd, buf, len, MSG_DONTWAIT);
+    return recv(c->fd, buf, len, MSG_DONTWAIT); // icke-blockerande läsning
 }
 
-void TCPClient_Disconnect(TCPClient* _Client)
+void TCPClient_Disconnect(TCPClient* c)
 {
-    if (_Client->fd >= 0)
-		close(_Client->fd);
+    if (c->fd >= 0)
+		close(c->fd);
 
-    _Client->fd = -1;
+    c->fd = -1;
 }
 
-void TCPClient_Dispose(TCPClient* _Client)
+void TCPClient_Dispose(TCPClient* c)
 {
-	TCPClient_Disconnect(_Client);
+	TCPClient_Disconnect(c);
 }

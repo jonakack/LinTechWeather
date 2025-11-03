@@ -1,25 +1,13 @@
-#ifndef HTTP_H
-#define HTTP_H
+#ifndef HTTP_CLIENT_H
+#define HTTP_CLIENT_H
 
 typedef struct {
-    char version[32];
-    int status_code;
-    char text[32];
-} statusline;
+    char host[256];
+    int port;
+    char path[1024];
+} ParsedURL;
 
-typedef struct {
-    char contentlength[64];
-    char contenttype[64];
-} header;
+int HTTPClient_ParseURL(const char* _URL, ParsedURL* _ParsedURL);
+int HTTPClient_Get(const char* _URL);
 
-typedef struct {
-    statusline status_line;
-    header headers[20];
-    int header_count;
-    char body[1024];
-} httprespone;
-
-
-
-
-#endif // HTTP_H
+#endif // HTTP_CLIENT_H
