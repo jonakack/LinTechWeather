@@ -4,7 +4,7 @@
 
 #include "smw.h"
 #include "HTTPServerConnection.h"
-#include "../TCPServer.h"
+#include "../TCP/TCPServer.h"
 
 typedef int (*HTTPServer_OnConnection)(void* _Context, HTTPServerConnection* _Connection);
 

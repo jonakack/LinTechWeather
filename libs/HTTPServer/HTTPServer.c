@@ -52,7 +52,7 @@ int HTTPServer_OnAccept(int _FD, void* _Context)
 		return -1;
 	}
 
-	_Server->onConnection(_Server, connection);
+	_Server->onConnection(_Server, connection); // Här anropar vi WeatherServer_OnHTTPConnection
 	
 	return 0;
 }

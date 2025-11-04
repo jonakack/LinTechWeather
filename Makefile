@@ -1,49 +1,87 @@
-# This makefile handles both the server- and client Makefiles
-.PHONY: all server client clean run run-server run-client
+# Variables
+CC=gcc
+OPTIMIZE=-ffunction-sections -fdata-sections -O2 -flto -Wno-unused-result -fno-strict-aliasing
+DEBUG_FLAGS=-g -O0 -Wfatal-errors -Werror
+LIBS=-luuid -lcurl -pthread -lm -lbsd
+INCLUDES = 
 
-# Build both server and client
-all: server client
+#   -DWALLOCATOR_DEBUG -DWALLOCATOR_DEBUG_BORDERCHECK
+# -fsanitize=address -fno-omit-frame-pointer
 
-# Run Makefile in /server
-server:
-	@echo "Building server..."
-	@$(MAKE) -C server
+# Build mode: release (default) or debug
+MODE ?= release
 
-# Run Makefile in /client
-client:
-	@echo "Building client..."
-	@$(MAKE) -C client
+# Base warnings/defs
+CFLAGS_BASE=-Wall -Wno-psabi -Werror -Ilibs
 
-# Clean server and client
+# Select flags per mode (OPTIMIZE goes into CFLAGS in release; LTO linked only in release)
+ifeq ($(MODE),debug)
+  CFLAGS=$(CFLAGS_BASE) $(DEBUG_FLAGS)
+  LDFLAGS=
+else
+  CFLAGS=$(CFLAGS_BASE) #$(OPTIMIZE)
+  LDFLAGS=
+endif
+
+# Directories
+SRC_DIR=.
+BUILD_DIR=build
+
+# Find all .c files (following symlinks)
+SOURCES=$(shell find -L $(SRC_DIR) -type f -name '*.c')
+
+# Per-target object lists in separate dirs
+SERVER_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/server/%.o,$(SOURCES))
+#CLIENT_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/client/%.o,$(SOURCES))
+
+# Executables
+EXECUTABLES=server #client
+
+# Default target
+all: $(EXECUTABLES)
+	@echo "Build complete ($(MODE))."
+
+# Debug helpers
+debug-server:
+	@$(MAKE) MODE=debug --no-print-directory clean server
+	@-rm -f WADEBUG.txt
+	gdb server -ex run
+
+#debug-client:
+#	@$(MAKE) MODE=debug --no-print-directory clean client
+#	@-rm -f WADEBUG.txt
+#	gdb client -ex run
+
+# Link rules
+server: $(SERVER_OBJECTS)
+	@echo "Linking $@..."
+	@$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
+
+#client: $(CLIENT_OBJECTS)
+#	@echo "Linking $@..."
+#	@$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
+
+# Compile rules with per-target defines
+$(BUILD_DIR)/server/%.o: $(SRC_DIR)/%.c
+	@echo "Compiling (server) $<..."
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) $(INCLUDES) -DTCPSERVER -c $< -o $@
+
+#$(BUILD_DIR)/client/%.o: $(SRC_DIR)/%.c
+#	@echo "Compiling (client) $<..."
+#	@mkdir -p $(dir $@)
+#	@$(CC) $(CFLAGS) $(INCLUDES) -DTCPCLIENT -c $< -o $@
+
+# Specific file compilation (kept; builds into server tree by default)
+FILE=
+compile:
+	@echo "Compiling $(FILE) (server defs)..."
+	@mkdir -p $(BUILD_DIR)/server/$(dir $(FILE))
+	$(CC) $(CFLAGS) $(INCLUDES) -DTCPSERVER -c $(FILE) -o $(BUILD_DIR)/server/$(FILE:.c=.o)
+
+# Clean
 clean:
-	@echo "Cleaning server..."
-	@$(MAKE) -C server clean
-	@echo "Cleaning client..."
-	@$(MAKE) -C client clean
-	@echo "Clean complete!"
+	@echo "Cleaning up..."
+	@rm -rf $(BUILD_DIR) $(EXECUTABLES)
 
-# Run both (server first, then client)
-run: all
-	@echo "Killing any existing servers..."
-	-@pkill -f weather_server 2>/dev/null
-	@sleep 1
-	@echo "Starting server in background..."
-	cd server && ./weather_server &
-	@echo "Waiting for server to start..."
-	@sleep 2
-	@echo "Starting client..."
-	cd client && ./weather_client
-	@echo "Stopping server..."
-	-@pkill -f weather_server 2>/dev/null
-
-# Run just the server
-run-server: server
-	@echo "Killing any existing servers..."
-	-@pkill -f weather_server 2>/dev/null
-	@echo "Starting server..."
-	cd server && ./weather_server
-
-# Run just the client (assumes server is already running)
-run-client: client
-	@echo "Starting client..."
-	@cd client && ./weather_client
+.PHONY: all clean compile debug-server debug-client

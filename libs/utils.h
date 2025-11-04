@@ -1,27 +1,12 @@
-#define _POSIX_C_SOURCE 200809L
+#ifndef __UTILS_H_
+#define __UTILS_H_
 
-#ifndef UTILS_H
-#define UTILS_H
-
-#include <time.h>
 #include <stdint.h>
-#include <unistd.h>
+#include <stddef.h>
 
-uint64_t SystemMonotonicMS()
-{
-	long            ms;
-	time_t          s;
+uint64_t SystemMonotonicMS(void);
 
-	struct timespec spec;
-	clock_gettime(CLOCK_MONOTONIC, &spec);
-	s  = spec.tv_sec;
-	ms = (spec.tv_nsec / 1000000);
+char* get_query_param(const char* url, const char* param);
+double str_to_double(const char* str);
 
-	uint64_t result = s;
-	result *= 1000;
-	result += ms;
-
-	return result;
-}
-
-#endif // UTILS_H
+#endif
