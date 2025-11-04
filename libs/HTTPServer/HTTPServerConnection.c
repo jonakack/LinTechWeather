@@ -143,7 +143,7 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		{
 			if (_Connection->onRequest != NULL)
 			{
-				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
+				_Connection->onRequest(_Connection->context); // ---- Callback till WeatherServerInstance_OnRequest ----
 			}
 		}
 	}
