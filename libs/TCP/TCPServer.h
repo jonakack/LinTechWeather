@@ -11,7 +11,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "../Utils/smw.h"
+#include "smw.h"
 
 #define MAX_CLIENTS 10
 

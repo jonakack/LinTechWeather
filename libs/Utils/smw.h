@@ -1,4 +1,3 @@
-
 #ifndef __smw_h_
 #define __smw_h_
 

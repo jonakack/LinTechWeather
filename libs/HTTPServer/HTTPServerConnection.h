@@ -1,9 +1,8 @@
-
 #ifndef __HTTPServerConnection_h_
 #define __HTTPServerConnection_h_
 
-#include "../Utils/smw.h"
-#include "../TCP/TCPClient.h"
+#include "smw.h"
+#include "TCPClient.h"
 
 typedef int (*HTTPServerConnection_OnRequest)(void* _Context);
 

@@ -1,5 +1,5 @@
-#include "smw.h"
 #include <string.h>
+#include "smw.h"
 
 smw g_smw;
 

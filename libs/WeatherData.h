@@ -1,7 +1,7 @@
 #ifndef __WeatherData_h_
 #define __WeatherData_h_
 
-#include "HTTPServer/HTTPServerConnection.h"
+#include "HTTPServerConnection.h"
 
 // Structure to hold parsed URL parameters for geo endpoint
 typedef struct {

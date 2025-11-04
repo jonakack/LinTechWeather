@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "WeatherData.h"
-#include "Utils/utils.h"
+#include "utils.h"
 
 GeoData* WeatherData_ParseGeoRequest(const char* url) {
     if (strncmp(url, "/api/v1/geo", 11) != 0) {

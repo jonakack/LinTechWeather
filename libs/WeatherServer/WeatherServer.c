@@ -1,5 +1,5 @@
-#include "WeatherServer.h"
 #include <stdlib.h>
+#include "WeatherServer.h"
 
 //-----------------Internal Functions-----------------
 

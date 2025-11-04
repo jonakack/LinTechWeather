@@ -63,3 +63,9 @@ client/weather_client
 # Build directories
 build/
 */build/
+
+# IDE/Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo

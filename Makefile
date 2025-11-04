@@ -11,8 +11,13 @@ INCLUDES =
 # Build mode: release (default) or debug
 MODE ?= release
 
-# Base warnings/defs
-CFLAGS_BASE=-Wall -Wno-psabi -Werror -Ilibs
+# Base warnings and #includes
+CFLAGS_BASE=-Wall -Wno-psabi -Werror \
+	-I libs \
+	-I libs/HTTPServer \
+	-I libs/TCP \
+	-I libs/Utils \
+	-I libs/WeatherServer
 
 # Select flags per mode (OPTIMIZE goes into CFLAGS in release; LTO linked only in release)
 ifeq ($(MODE),debug)
