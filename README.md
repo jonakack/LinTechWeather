@@ -21,7 +21,7 @@ Servern svarar (om namnet är en giltig stad) med t.ex:
 Ni anropar nästa länk med dessa koordinater:
 
 ```
-http://localhost:8080/api/v1/weather?lat=latitude&lon=longitude
+http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
 ```
 
 Servern svarar med t.ex:
