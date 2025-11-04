@@ -15,18 +15,18 @@ http://localhost:8080/api/v1/geo?city=<cityname>
 
 Servern svarar (om namnet är en giltig stad) med t.ex:
 ```json
-{ "city":"<cityname>","country":"<country>","lat":<latitude>,"lon":<longitude> }
+{ "city":"cityname","country":"country","lat":"latitude","lon":"longitude" }
 ```
 
 Ni anropar nästa länk med dessa koordinater:
 
 ```
-http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
+http://localhost:8080/api/v1/weather?lat=latitude&lon=longitude
 ```
 
 Servern svarar med t.ex:
 ```json
-{ "tempC":<temperature>,"description":"<weathercode>","updatedAt":"<date>T<time>Z" }
+{ "tempC":"temperature","description":"weathercode","updatedAt":"dateTimeZ" }
 ```
 
 ## Anropa server via webbläsaren med en av dessa länkar:
