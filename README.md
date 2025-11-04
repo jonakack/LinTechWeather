@@ -1,5 +1,34 @@
 # LinTechWeather API
-Under utveckling
+Under utveckling. 
+
+## Kommande features:
+Felkoder, t.ex om stad inte hittas.
+
+Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
+
+# Steg för steg-guide:
+Ni anropar denna länk och byter ut `<cityname>` med staden ni vill söka efter:
+
+```
+http://localhost:8080/api/v1/geo?city=<cityname>
+```
+
+Servern svarar (om namnet är en giltig stad) med t.ex:
+```json
+{ "city":"cityname","country":"country","lat":"latitude","lon":"longitude" }
+```
+
+Ni anropar nästa länk med dessa koordinater:
+
+```
+http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
+```
+
+Servern svarar med t.ex:
+```json
+{ "tempC":"temperature","description":"weathercode","updatedAt":"dateTimeZ" }
+```
+
 ## Anropa server via webbläsaren med en av dessa länkar:
 http://localhost:8080/api/v1/geo?city=Stockholm
 
@@ -7,7 +36,6 @@ http://localhost:8080/api/v1/weather?lat=59.3293&lon=18.0686
 
 http://localhost:8080/invalidpath
 
-Kommer i framtiden inte vara lokalt.
 
 ## Eller via en terminal med detta kommando och curl installerat:
 curl -l '127.0.0.1:8080/api/v1/geo?city=Stockholm'
@@ -16,16 +44,16 @@ curl -l '127.0.0.1:8080/api/v1/weather?lat=59.3293&lon=18.0686'
 
 curl -l '127.0.0.1:8080/api/v1/invalidpath'
 
-## Första Endpoint
+## Första Endpointen
 ### Anropas med t.ex. "/api/v1/geo?city=Stockholm". Då svarar server detta till klient:
 { "city":"Stockholm","country":"SE","lat":59.3293,"lon":18.0686 }
 
-## Andra Endpoint
+## Andra Endpointen
 ### Anropas med t.ex. "/api/v1/weather?lat=59.3293&lon=18.0686". Då svarar server detta till klient:
 { "tempC":7.0,"description":"0","updatedAt":"2025-11-02T09:00:00Z" }
 
 # CodeﾠDescription 
-### Innehåller en av dessa variabler:
+### Väderkoden som ges har följande betydelse:
 0ﾠClear sky
 
 1, 2, 3ﾠMainly clear, partly cloudy, and overcast
