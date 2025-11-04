@@ -29,6 +29,11 @@ Servern svarar med t.ex:
 { "tempC":"temperature","description":"weathercode","updatedAt":"dateTimeZ" }
 ```
 
+## Exempel på svar vid fel:
+```json
+{ "error": { "code": 404, "message": "city not found" } }
+```
+
 ## Anropa server via webbläsaren med en av dessa länkar:
 http://localhost:8080/api/v1/geo?city=Stockholm
 
