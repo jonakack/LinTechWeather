@@ -2,7 +2,7 @@
 #ifndef __HTTPServer_h_
 #define __HTTPServer_h_
 
-#include "smw.h"
+#include "../Utils/smw.h"
 #include "HTTPServerConnection.h"
 #include "../TCP/TCPServer.h"
 

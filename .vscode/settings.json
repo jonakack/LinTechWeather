@@ -6,6 +6,10 @@
         "httpserverconnection.h": "c",
         "time.h": "c",
         "stdlib.h": "c",
-        "weatherdata.h": "c"
+        "weatherdata.h": "c",
+        "linked_list.h": "c",
+        "smw.h": "c",
+        "utils.h": "c",
+        "weatherserver.h": "c"
     }
 }

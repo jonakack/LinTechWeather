@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "smw.h"
-#include "utils.h"
+#include "libs/Utils/smw.h"
+#include "libs/Utils/utils.h"
 #include "libs/WeatherServer/WeatherServer.h"
 
 

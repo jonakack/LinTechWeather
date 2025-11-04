@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "WeatherData.h"
-#include "utils.h"
+#include "Utils/utils.h"
 
 GeoData* WeatherData_ParseGeoRequest(const char* url) {
     if (strncmp(url, "/api/v1/geo", 11) != 0) {
@@ -65,7 +65,7 @@ WeatherData* WeatherData_ParseWeatherRequest(const char* url) {
     // For now, return hardcoded weather data for Stockholm coordinates
     if (lat == 59.3293 && lon == 18.0686) {
         data->tempC = 7.0;
-        data->description = strdup("Mulet");
+        data->description = strdup("0");
         data->updatedAt = strdup("2025-11-02T09:00:00Z");
     } else {
         // Default values for unknown locations

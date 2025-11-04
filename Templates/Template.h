@@ -1,4 +1,4 @@
-
+/* 
 #ifndef __Template_h_
 #define __Template_h_
 
@@ -20,3 +20,4 @@ void Template_Dispose(Template* _Server);
 void Template_DisposePtr(Template** _ServerPtr);
 
 #endif //__Template_h_
+ */

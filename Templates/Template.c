@@ -1,4 +1,4 @@
-#include "Template.h"
+/* #include "Template.h"
 #include <stdlib.h>
 
 //-----------------Internal Functions-----------------
@@ -56,3 +56,4 @@ void Template_DisposePtr(Template** _ServerPtr)
 	free(*(_ServerPtr));
 	*(_ServerPtr) = NULL;
 }
+ */
