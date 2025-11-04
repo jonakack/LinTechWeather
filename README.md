@@ -7,17 +7,27 @@ Felkoder, t.ex om stad inte hittas.
 Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
 
 # Steg för steg-guide:
-Ni anropar denna länk och byter ut &lt;cityname&gt; med staden ni vill söka efter:
+Ni anropar denna länk och byter ut `<cityname>` med staden ni vill söka efter:
 
-http://localhost:8080/api/v1/geo?city=&lt;cityname&gt; 
+```
+http://localhost:8080/api/v1/geo?city=<cityname>
+```
 
-Servern svarar (om namnet är en giltig stad) med t.ex { "city":"&lt;cityname&gt;","country":"&lt;country&gt;","lat":&lt;latitude&gt;,"lon":&lt;longitude&gt; }
+Servern svarar (om namnet är en giltig stad) med t.ex:
+```json
+{ "city":"<cityname>","country":"<country>","lat":<latitude>,"lon":<longitude> }
+```
 
 Ni anropar nästa länk med dessa koordinater:
 
-http://localhost:8080/api/v1/weather?lat=&lt;latitude&gt;&lon=&lt;longitude&gt;
+```
+http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
+```
 
-Servern svarar med t.ex { "tempC":&lt;temperature&gt;,"description":"&lt;weathercode&gt;","updatedAt":"&lt;date&gt;T&lt;time&gt;Z" }
+Servern svarar med t.ex:
+```json
+{ "tempC":<temperature>,"description":"<weathercode>","updatedAt":"<date>T<time>Z" }
+```
 
 ## Anropa server via webbläsaren med en av dessa länkar:
 http://localhost:8080/api/v1/geo?city=Stockholm
