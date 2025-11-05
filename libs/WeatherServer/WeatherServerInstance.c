@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include "WeatherServerInstance.h"
+#include "RequestRouter.h"
 
 //-----------------Internal Functions-----------------
 
@@ -44,56 +45,7 @@ int WeatherServerInstance_OnRequest(void* _Context)
 {
     WeatherServerInstance* _Instance = (WeatherServerInstance*)_Context;
     HTTPServerConnection* _Connection = _Instance->connection;
-
-    char* json_response = NULL;
-    const char* url = _Connection->url;
-
-    // Try parsing as geo request first
-    GeoData* geo_data = WeatherData_ParseGeoRequest(url);
-	WeatherData* weather_data = WeatherData_ParseWeatherRequest(url);
-    if (geo_data) {
-        json_response = WeatherData_GeoToJson(geo_data);
-        WeatherData_FreeGeoData(geo_data);
-    // If not a geo, try as weather.
-    } else {
-		json_response = WeatherData_WeatherToJson(weather_data);
-		WeatherData_FreeWeatherData(weather_data);
-    }
-
-    if (json_response == NULL) {
-        // Handle error - send 400 Bad Request with correct Content-Length
-        const char* body = "{\"error\":\"Invalid request\"}";
-        size_t body_len = strlen(body);
-
-        char header[256];
-        int header_len = snprintf(header, sizeof(header),
-                                  "HTTP/1.1 400 Bad Request\r\n"
-                                  "Content-Type: application/json\r\n"
-                                  "Content-Length: %zu\r\n"
-                                  "\r\n",
-                                  body_len);
-        if (header_len > 0) {
-            TCPClient_Write(&_Connection->tcpClient, (uint8_t*)header, header_len);
-        }
-        TCPClient_Write(&_Connection->tcpClient, (uint8_t*)body, (int)body_len);
-        return 0;
-    }
-
-    // Create HTTP response
-    char response_header[256];
-    snprintf(response_header, sizeof(response_header),
-             "HTTP/1.1 200 OK\r\n"
-             "Content-Type: application/json\r\n"
-             "Content-Length: %zu\r\n"
-             "\r\n",
-             strlen(json_response));
-
-    // Send response
-    TCPClient_Write(&_Connection->tcpClient, (uint8_t*)response_header, strlen(response_header));
-    TCPClient_Write(&_Connection->tcpClient, (uint8_t*)json_response, strlen(json_response));
-
-    // Clean up
-    free(json_response);
+    RequestRouter_HandleRequest(_Connection);
 
     return 0;
 }
