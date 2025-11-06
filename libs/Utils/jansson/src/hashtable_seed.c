@@ -8,10 +8,7 @@
 
 #include <stdio.h>
 #include <time.h>
-
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
@@ -44,7 +41,7 @@
 
 #include "jansson.h"
 
-static uint32_t buf_to_uint32(char *data) {
+__attribute__((unused)) static uint32_t buf_to_uint32(char *data) {
     size_t i;
     uint32_t result = 0;
 

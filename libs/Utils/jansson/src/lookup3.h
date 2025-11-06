@@ -41,9 +41,7 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 #include <jansson_private_config.h>
 #endif
 
-#ifdef HAVE_STDINT_H
 #include <stdint.h>     /* defines uint32_t etc */
-#endif
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>  /* attempt to define endianness */

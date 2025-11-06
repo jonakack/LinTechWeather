@@ -59,6 +59,7 @@ weather_server
 weather_client
 server/weather_server
 client/weather_client
+server
 
 # Build directories
 build/

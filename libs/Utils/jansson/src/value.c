@@ -17,10 +17,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 
 #include "hashtable.h"
 #include "jansson.h"
