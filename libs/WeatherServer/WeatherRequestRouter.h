@@ -1,5 +1,5 @@
-#ifndef __RequestRouter_h_
-#define __RequestRouter_h_
+#ifndef __WeatherRequestRouter_h_
+#define __WeatherRequestRouter_h_
 
 #include "HTTPServerConnection.h"
 
@@ -12,6 +12,6 @@ typedef enum {
 } RouteResult;
 
 // Handle incoming HTTP request and send appropriate response to client
-RouteResult RequestRouter_HandleRequest(HTTPServerConnection* _Connection);
+RouteResult WeatherRequestRouter_HandleRequest(HTTPServerConnection* _Connection);
 
-#endif // __RequestRouter_h_
+#endif // __WeatherRequestRouter_h_

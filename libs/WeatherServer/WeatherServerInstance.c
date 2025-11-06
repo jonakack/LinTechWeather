@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include "WeatherServerInstance.h"
-#include "RequestRouter.h"
+#include "WeatherRequestRouter.h"
 
 //-----------------Internal Functions-----------------
 
@@ -45,7 +45,7 @@ int WeatherServerInstance_OnRequest(void* _Context)
 {
     WeatherServerInstance* _Instance = (WeatherServerInstance*)_Context;
     HTTPServerConnection* _Connection = _Instance->connection;
-    RequestRouter_HandleRequest(_Connection);
+    WeatherRequestRouter_HandleRequest(_Connection);
 
     return 0;
 }

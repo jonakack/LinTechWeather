@@ -1,11 +1,11 @@
-#include "RequestRouter.h"
+#include "WeatherRequestRouter.h"
 #include "WeatherRequestHandler.h"
 #include "HTTPResponse.h"
 #include <string.h>
 #include <stdlib.h>
 
 // Check if URL matches a specific path
-static int RequestRouter_PathMatches(const char* _Url, const char* _Path)
+static int WeatherRequestRouter_PathMatches(const char* _Url, const char* _Path)
 {
     if (_Url == NULL || _Path == NULL) {
         return 0;
@@ -23,7 +23,7 @@ static int RequestRouter_PathMatches(const char* _Url, const char* _Path)
     return (next_char == '\0' || next_char == '?' || next_char == '#');
 }
 
-RouteResult RequestRouter_HandleRequest(HTTPServerConnection* _Connection)
+RouteResult WeatherRequestRouter_HandleRequest(HTTPServerConnection* _Connection)
 {
     if (_Connection == NULL || _Connection->url == NULL) {
         return ROUTE_INTERNAL_ERROR;
@@ -33,10 +33,10 @@ RouteResult RequestRouter_HandleRequest(HTTPServerConnection* _Connection)
     char* json_response = NULL;
 
     // Route to appropriate handler based on URL path
-    if (RequestRouter_PathMatches(url, "/api/v1/geo")) {
+    if (WeatherRequestRouter_PathMatches(url, "/api/v1/geo")) {
         json_response = WeatherRequestHandler_HandleGeoRequest(url);
     }
-    else if (RequestRouter_PathMatches(url, "/api/v1/weather")) {
+    else if (WeatherRequestRouter_PathMatches(url, "/api/v1/weather")) {
         json_response = WeatherRequestHandler_HandleWeatherRequest(url);
     }
     else {
