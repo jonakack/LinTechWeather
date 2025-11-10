@@ -7,7 +7,7 @@ Felkoder, t.ex om stad inte hittas.
 Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
 
 # Steg för steg-guide:
-Ni anropar denna länk och byter ut `<cityname>` med staden ni vill söka efter:
+Ni anropar denna länk och byter ut `<cityname>` mot staden ni vill söka efter:
 
 ```
 http://localhost:8080/api/v1/geo?city=<cityname>
@@ -28,6 +28,8 @@ Servern svarar med t.ex:
 ```json
 { "tempC":"temperature","description":"weathercode","updatedAt":"dateTimeZ" }
 ```
+
+OBS: Utgå från att tiden för tillfället är GMT. Detta kan ändras senare i utvecklingen. 
 
 ## Exempel på svar vid fel:
 ```json
