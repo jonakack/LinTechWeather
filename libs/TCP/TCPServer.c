@@ -93,7 +93,6 @@ int TCPServer_Accept(TCPServer* _Server)
 	int result = _Server->onAccept(socket_fd, _Server->context); // Här anropar vi HTTPServer_OnAccept
 	if(result != 0)
 		close(socket_fd);
-
 	return 0;
 }
 

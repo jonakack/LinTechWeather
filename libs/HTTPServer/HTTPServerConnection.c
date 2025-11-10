@@ -147,12 +147,10 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 				HTTPServerConnection_Dispose(_Connection);
 			}
 		}
-		/* else (strcmp(_Connection->method, "GET") != 0)
-		{
-			HTTPServerConnection_Dispose(_Connection);
-		} */
-	}
+		else HTTPServerConnection_Dispose(_Connection);
+    }
 }
+
 
 void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 {
