@@ -86,3 +86,20 @@ curl -l '127.0.0.1:8080/api/v1/invalidpath'
 95 *ﾠThunderstorm: Slight or moderate
 
 96, 99 *ﾠThunderstorm with slight and heavy hail
+
+# Tmux Instructions
+
+### Start server in detached tmux session
+make run-tmux
+
+### Check if it's running
+tmux list-sessions
+
+### Attach to see server output
+tmux attach -t weather-server
+
+### Detach from session (server keeps running)
+Ctrl+B, then D
+
+## Stop the server
+make kill-server
