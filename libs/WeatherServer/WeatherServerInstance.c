@@ -46,7 +46,6 @@ int WeatherServerInstance_OnRequest(void* _Context)
     WeatherServerInstance* _Instance = (WeatherServerInstance*)_Context;
     HTTPServerConnection* _Connection = _Instance->connection;
     WeatherRequestRouter_HandleRequest(_Connection);
-
     return 0;
 }
 

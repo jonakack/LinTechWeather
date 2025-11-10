@@ -144,8 +144,13 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 			if (_Connection->onRequest != NULL)
 			{
 				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
+				HTTPServerConnection_Dispose(_Connection);
 			}
 		}
+		/* else (strcmp(_Connection->method, "GET") != 0)
+		{
+			HTTPServerConnection_Dispose(_Connection);
+		} */
 	}
 }
 

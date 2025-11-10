@@ -66,7 +66,7 @@ void TCPClient_Disconnect(TCPClient* c)
 {
     if (c->fd >= 0)
 		close(c->fd);
-
+    printf("Client with fd %d disconnected.\n", c->fd);
     c->fd = -1;
 }
 
