@@ -84,9 +84,14 @@ compile:
 	@mkdir -p $(BUILD_DIR)/server/$(dir $(FILE))
 	$(CC) $(CFLAGS) $(INCLUDES) -DTCPSERVER -c $(FILE) -o $(BUILD_DIR)/server/$(FILE:.c=.o)
 
+# Run targets
+run: server
+	@echo "Starting server..."
+	@./server
+
 # Clean
 clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR) $(EXECUTABLES)
 
-.PHONY: all clean compile debug-server debug-client
+.PHONY: all clean compile debug-server debug-client run
