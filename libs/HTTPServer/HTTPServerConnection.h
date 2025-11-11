@@ -12,7 +12,6 @@ typedef struct
 
 	void* context;
 	HTTPServerConnection_OnRequest onRequest;
-
 	char* method;
 	char* url;
 	int requestReceived;

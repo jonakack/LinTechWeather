@@ -89,18 +89,16 @@ int TCPServer_Accept(TCPServer* _Server)
 	}
 
 	TCPServer_Nonblocking(socket_fd);
-	printf("TCPServer: accepted connection fd=%d\n", socket_fd); // Ta bort denna senare
+	printf("TCPServer: accepted connection fd = %d\n", socket_fd); // Ta bort denna senare
 	int result = _Server->onAccept(socket_fd, _Server->context); // Här anropar vi HTTPServer_OnAccept
 	if(result != 0)
 		close(socket_fd);
-
 	return 0;
 }
 
 void TCPServer_TaskWork(void* _Context, uint64_t _MonTime)
 {
 	TCPServer* _Server = (TCPServer*)_Context;
-	
 	TCPServer_Accept(_Server);
 }
 

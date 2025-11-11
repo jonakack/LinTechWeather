@@ -1,14 +1,14 @@
 #include "TCPClient.h"
 
-int TCPClient_Initiate(TCPClient* c, int fd)
+int TCPClient_Initiate(TCPClient* _Client, int fd)
 {
-	c->fd = fd;
+	_Client->fd = fd;
 	return 0;
 }
 
-int TCPClient_Connect(TCPClient* c, const char *host, const char *port)
+int TCPClient_Connect(TCPClient* _Client, const char *_Host, const char *_Port)
 {
-	if(c->fd >= 0)
+	if(_Client->fd >= 0)
 		return -1;
 
     struct addrinfo hints = {0};
@@ -18,7 +18,7 @@ int TCPClient_Connect(TCPClient* c, const char *host, const char *port)
     hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-    if (getaddrinfo(host, port, &hints, &res) != 0)
+    if (getaddrinfo(_Host, _Port, &hints, &res) != 0)
         return -1;
 
 	/*
@@ -48,29 +48,29 @@ int TCPClient_Connect(TCPClient* c, const char *host, const char *port)
     if (fd < 0)
 		return -1;
 
-    c->fd = fd;
+    _Client->fd = fd;
     return 0;
 }
 
-int TCPClient_Write(TCPClient* c, const uint8_t* buf, int len)
+int TCPClient_Write(TCPClient* _Client, const uint8_t* _Buffer, int _Length)
 {
-    return send(c->fd, buf, len, MSG_NOSIGNAL);
+    return send(_Client->fd, _Buffer, _Length, MSG_NOSIGNAL); // Non-blocking
 }
 
-int TCPClient_Read(TCPClient* c, uint8_t* buf, int len)
+int TCPClient_Read(TCPClient* _Client, uint8_t* _Buffer, int _Length)
 {
-    return recv(c->fd, buf, len, MSG_DONTWAIT); // icke-blockerande läsning
+    return recv(_Client->fd, _Buffer, _Length, MSG_DONTWAIT); // Non-blocking
 }
 
-void TCPClient_Disconnect(TCPClient* c)
+void TCPClient_Disconnect(TCPClient* _Client)
 {
-    if (c->fd >= 0)
-		close(c->fd);
-
-    c->fd = -1;
+    if (_Client->fd >= 0)
+		close(_Client->fd);
+    printf("Client with fd %d disconnected\n", _Client->fd);
+    _Client->fd = -1;
 }
 
-void TCPClient_Dispose(TCPClient* c)
+void TCPClient_Dispose(TCPClient* _Client)
 {
-	TCPClient_Disconnect(c);
+	TCPClient_Disconnect(_Client);
 }

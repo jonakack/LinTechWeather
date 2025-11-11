@@ -5,9 +5,6 @@ DEBUG_FLAGS=-g -O0 -Wfatal-errors -Werror
 LIBS=-luuid -lcurl -pthread -lm -lbsd
 INCLUDES = 
 
-#   -DWALLOCATOR_DEBUG -DWALLOCATOR_DEBUG_BORDERCHECK
-# -fsanitize=address -fno-omit-frame-pointer
-
 # Build mode: release (default) or debug
 MODE ?= release
 
@@ -35,58 +32,57 @@ BUILD_DIR=build
 # Find all .c files (following symlinks)
 SOURCES=$(shell find -L $(SRC_DIR) -type f -name '*.c')
 
-# Per-target object lists in separate dirs
-SERVER_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/server/%.o,$(SOURCES))
-#CLIENT_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/client/%.o,$(SOURCES))
+# Per-target object lists - put everything in build/
+SERVER_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
 # Executables
-EXECUTABLES=server #client
+EXECUTABLES=server
 
 # Default target
 all: $(EXECUTABLES)
 	@echo "Build complete ($(MODE))."
-
-# Debug helpers
-debug-server:
-	@$(MAKE) MODE=debug --no-print-directory clean server
-	@-rm -f WADEBUG.txt
-	gdb server -ex run
-
-#debug-client:
-#	@$(MAKE) MODE=debug --no-print-directory clean client
-#	@-rm -f WADEBUG.txt
-#	gdb client -ex run
+	@echo "(STANDARD) Use 'make run' to start server in current terminal"
+	@echo "(DETACHED) Use 'make run-tmux' to start server in tmux session"
 
 # Link rules
 server: $(SERVER_OBJECTS)
 	@echo "Linking $@..."
 	@$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 
-#client: $(CLIENT_OBJECTS)
-#	@echo "Linking $@..."
-#	@$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
-
-# Compile rules with per-target defines
-$(BUILD_DIR)/server/%.o: $(SRC_DIR)/%.c
-	@echo "Compiling (server) $<..."
+# Compile rules - everything goes in build/
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(INCLUDES) -DTCPSERVER -c $< -o $@
+	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-#$(BUILD_DIR)/client/%.o: $(SRC_DIR)/%.c
-#	@echo "Compiling (client) $<..."
-#	@mkdir -p $(dir $@)
-#	@$(CC) $(CFLAGS) $(INCLUDES) -DTCPCLIENT -c $< -o $@
-
-# Specific file compilation (kept; builds into server tree by default)
+# Specific file compilation
 FILE=
 compile:
-	@echo "Compiling $(FILE) (server defs)..."
-	@mkdir -p $(BUILD_DIR)/server/$(dir $(FILE))
-	$(CC) $(CFLAGS) $(INCLUDES) -DTCPSERVER -c $(FILE) -o $(BUILD_DIR)/server/$(FILE:.c=.o)
+	@echo "Compiling $(FILE)..."
+	@mkdir -p $(BUILD_DIR)/$(dir $(FILE))
+	$(CC) $(CFLAGS) $(INCLUDES) -c $(FILE) -o $(BUILD_DIR)/$(FILE:.c=.o)
+
+# Run targets
+run: server
+	@echo "Starting server..."
+	@./server
+
+# Run server and detach it automatically
+run-tmux: server
+	@echo "Starting server in detached tmux session..."
+	@tmux new-session -d -s weather-server './server'
+	@echo "Server started in tmux session 'weather-server'"
+	@echo "Use 'tmux attach -t weather-server' to attach"
+	@echo "Use 'make kill-server' to stop"
+
+# Kill the tmux server session
+kill-server:
+	@echo "Stopping server..."
+	@tmux kill-session -t weather-server 2>/dev/null || echo "Server was not running"
 
 # Clean
 clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR) $(EXECUTABLES)
 
-.PHONY: all clean compile debug-server debug-client
+.PHONY: all clean compile debug-server debug-client run run-tmux kill-server

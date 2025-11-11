@@ -7,7 +7,7 @@ Felkoder, t.ex om stad inte hittas.
 Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
 
 # Steg för steg-guide:
-Ni anropar denna länk och byter ut `<cityname>` med staden ni vill söka efter:
+Ni anropar denna länk och byter ut `<cityname>` mot staden ni vill söka efter:
 
 ```
 http://localhost:8080/api/v1/geo?city=<cityname>
@@ -28,6 +28,8 @@ Servern svarar med t.ex:
 ```json
 { "tempC":"temperature","description":"weathercode","updatedAt":"dateTimeZ" }
 ```
+
+OBS: Utgå från att tiden för tillfället är GMT. Detta kan ändras senare i utvecklingen. 
 
 ## Exempel på svar vid fel:
 ```json
@@ -84,3 +86,20 @@ curl -l '127.0.0.1:8080/api/v1/invalidpath'
 95 *ﾠThunderstorm: Slight or moderate
 
 96, 99 *ﾠThunderstorm with slight and heavy hail
+
+# Tmux Instructions
+
+### Start server in detached tmux session
+make run-tmux
+
+### Check if it's running
+tmux list-sessions
+
+### Attach to see server output
+tmux attach -t weather-server
+
+### Detach from session (server keeps running)
+Ctrl+B, then D
+
+## Stop the server
+make kill-server

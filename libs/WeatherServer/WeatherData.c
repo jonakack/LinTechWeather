@@ -4,8 +4,8 @@
 #include "WeatherData.h"
 #include "utils.h"
 
-GeoData* WeatherData_ParseGeoRequest(const char* url) {
-    if (strncmp(url, "/api/v1/geo", 11) != 0) {
+GeoData* WeatherData_ParseGeoRequest(const char* _Url) {
+    if (strncmp(_Url, "/api/v1/geo", 11) != 0) {
         return NULL;
     }
     
@@ -14,7 +14,7 @@ GeoData* WeatherData_ParseGeoRequest(const char* url) {
     if (!data) return NULL;
     
     // Get city parameter
-    data->city = get_query_param(url, "city");
+    data->city = get_query_param(_Url, "city");
     if (!data->city) {
         WeatherData_FreeGeoData(data);
         return NULL;
@@ -35,15 +35,15 @@ GeoData* WeatherData_ParseGeoRequest(const char* url) {
     return data;
 }
 
-WeatherData* WeatherData_ParseWeatherRequest(const char* url) {
+WeatherData* WeatherData_ParseWeatherRequest(const char* _Url) {
     // Check if URL starts with weather API endpoint
-    if (strncmp(url, "/api/v1/weather", 14) != 0) {
+    if (strncmp(_Url, "/api/v1/weather", 14) != 0) {
         return NULL;
     }
     
     // Get lat and lon parameters
-    char* lat_str = get_query_param(url, "lat");
-    char* lon_str = get_query_param(url, "lon");
+    char* lat_str = get_query_param(_Url, "lat");
+    char* lon_str = get_query_param(_Url, "lon");
     
     if (!lat_str || !lon_str) {
         if (lat_str) free(lat_str);
@@ -77,8 +77,8 @@ WeatherData* WeatherData_ParseWeatherRequest(const char* url) {
     return data;
 }
 
-char* WeatherData_GeoToJson(const GeoData* data) {
-    if (!data) return NULL;
+char* WeatherData_GeoToJson(const GeoData* _Data) {
+    if (!_Data) return NULL;
     
     // Allocate buffer for JSON string
     char* json = (char*)malloc(256);
@@ -87,16 +87,16 @@ char* WeatherData_GeoToJson(const GeoData* data) {
     // Format JSON string
     snprintf(json, 256,
              "{ \"city\":\"%s\",\"country\":\"%s\",\"lat\":%.4f,\"lon\":%.4f }",
-             data->city,
-             data->country,
-             data->lat,
-             data->lon);
+             _Data->city,
+             _Data->country,
+             _Data->lat,
+             _Data->lon);
     
     return json;
 }
 
-char* WeatherData_WeatherToJson(const WeatherData* data) {
-    if (!data) return NULL;
+char* WeatherData_WeatherToJson(const WeatherData* _Data) {
+    if (!_Data) return NULL;
     
     // Allocate buffer for JSON string
     char* json = (char*)malloc(256);
@@ -105,25 +105,25 @@ char* WeatherData_WeatherToJson(const WeatherData* data) {
     // Format JSON string
     snprintf(json, 256,
              "{ \"tempC\":%.1f,\"description\":\"%s\",\"updatedAt\":\"%s\" }",
-             data->tempC,
-             data->description,
-             data->updatedAt);
+             _Data->tempC,
+             _Data->description,
+             _Data->updatedAt);
     
     return json;
 }
 
-void WeatherData_FreeGeoData(GeoData* data) {
-    if (!data) return;
+void WeatherData_FreeGeoData(GeoData* _Data) {
+    if (!_Data) return;
     
-    if (data->city) free(data->city);
-    if (data->country) free(data->country);
-    free(data);
+    if (_Data->city) free(_Data->city);
+    if (_Data->country) free(_Data->country);
+    free(_Data);
 }
 
-void WeatherData_FreeWeatherData(WeatherData* data) {
-    if (!data) return;
+void WeatherData_FreeWeatherData(WeatherData* _Data) {
+    if (!_Data) return;
     
-    if (data->description) free(data->description);
-    if (data->updatedAt) free(data->updatedAt);
-    free(data);
+    if (_Data->description) free(_Data->description);
+    if (_Data->updatedAt) free(_Data->updatedAt);
+    free(_Data);
 }
