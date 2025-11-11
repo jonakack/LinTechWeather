@@ -41,6 +41,8 @@ EXECUTABLES=server
 # Default target
 all: $(EXECUTABLES)
 	@echo "Build complete ($(MODE))."
+	@echo "(STANDARD) Use 'make run' to start server in current terminal"
+	@echo "(DETACHED) Use 'make run-tmux' to start server in tmux session"
 
 # Link rules
 server: $(SERVER_OBJECTS)
