@@ -12,7 +12,7 @@ int HTTPServer_Initiate(HTTPServer* _Server, HTTPServer_OnConnection _OnConnecti
 {
 	_Server->onConnection = _OnConnection;
 
-	TCPServer_Initiate(&_Server->tcpServer, "8080", HTTPServer_OnAccept, _Server);
+	TCPServer_Initiate(&_Server->tcpServer, "10380", HTTPServer_OnAccept, _Server);
 	
 	_Server->task = smw_createTask(_Server, HTTPServer_TaskWork);
 
