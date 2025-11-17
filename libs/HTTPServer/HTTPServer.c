@@ -1,6 +1,13 @@
 #include "HTTPServer.h"
 #include <stdlib.h>
 
+// Default port if not defined at compile time
+#ifndef HTTP_SERVER_PORT
+#define HTTP_SERVER_PORT "10380"
+#endif
+
+
+
 //-----------------Internal Functions-----------------
 
 void HTTPServer_TaskWork(void* _Context, uint64_t _MonTime);
@@ -12,7 +19,9 @@ int HTTPServer_Initiate(HTTPServer* _Server, HTTPServer_OnConnection _OnConnecti
 {
 	_Server->onConnection = _OnConnection;
 
-	TCPServer_Initiate(&_Server->tcpServer, "10380", HTTPServer_OnAccept, _Server);
+	TCPServer_Initiate(&_Server->tcpServer, HTTP_SERVER_PORT, HTTPServer_OnAccept, _Server);
+	
+	printf("HTTP Server starting on port %s\n", HTTP_SERVER_PORT);
 	
 	_Server->task = smw_createTask(_Server, HTTPServer_TaskWork);
 
