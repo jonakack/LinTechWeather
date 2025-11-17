@@ -14,7 +14,7 @@ typedef struct {
 // Structure to hold weather data
 typedef struct {
     double tempC;
-    char* description;
+    char* weatherCode;
     char* updatedAt;
 } WeatherData;
 

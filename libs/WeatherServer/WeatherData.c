@@ -65,12 +65,12 @@ WeatherData* WeatherData_ParseWeatherRequest(const char* _Url) {
     // For now, return hardcoded weather data for Stockholm coordinates
     if (lat == 59.3293 && lon == 18.0686) {
         data->tempC = 7.0;
-        data->description = strdup("0");
+        data->weatherCode = strdup("0");
         data->updatedAt = strdup("2025-11-02T09:00:00Z");
     } else {
         // Default values for unknown locations
         data->tempC = 0.0;
-        data->description = strdup("Unknown");
+        data->weatherCode = strdup("Unknown");
         data->updatedAt = strdup("2025-11-02T09:00:00Z");
     }
     
@@ -104,9 +104,9 @@ char* WeatherData_WeatherToJson(const WeatherData* _Data) {
     
     // Format JSON string
     snprintf(json, 256,
-             "{ \"tempC\":%.1f,\"description\":\"%s\",\"updatedAt\":\"%s\" }",
+             "{ \"tempC\":%.1f,\"weather_code\":\"%s\",\"updatedAt\":\"%s\" }",
              _Data->tempC,
-             _Data->description,
+             _Data->weatherCode,
              _Data->updatedAt);
     
     return json;
@@ -123,7 +123,7 @@ void WeatherData_FreeGeoData(GeoData* _Data) {
 void WeatherData_FreeWeatherData(WeatherData* _Data) {
     if (!_Data) return;
     
-    if (_Data->description) free(_Data->description);
+    if (_Data->weatherCode) free(_Data->weatherCode);
     if (_Data->updatedAt) free(_Data->updatedAt);
     free(_Data);
 }
