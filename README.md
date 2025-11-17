@@ -7,6 +7,9 @@ Felkoder, t.ex om stad inte hittas.
 Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
 
 # Steg för steg-guide:
+
+Kompilera med -DHTTP_SERVER_PORT="XXXX" om ni vill byta port
+
 Ni anropar denna länk och byter ut `<cityname>` mot staden ni vill söka efter:
 
 ```
