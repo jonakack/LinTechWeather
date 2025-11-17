@@ -3,7 +3,7 @@
 
 // Default port if not defined at compile time
 #ifndef HTTP_SERVER_PORT
-#define HTTP_SERVER_PORT "10380"
+#define HTTP_SERVER_PORT "8080"
 #endif
 
 

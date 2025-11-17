@@ -7,8 +7,7 @@
 typedef struct {
     char* city;
     char* country;
-    double lat;
-    double lon;
+    char* response;
 } GeoData;
 
 // Structure to hold weather data

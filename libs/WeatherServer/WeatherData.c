@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "HTTPClient.h"
 #include "WeatherData.h"
 #include "utils.h"
 
@@ -20,17 +21,21 @@ GeoData* WeatherData_ParseGeoRequest(const char* _Url) {
         return NULL;
     }
     
-    // For now, hardcode some example values
-    if (strcmp(data->city, "Stockholm") == 0) {
-        data->country = strdup("SE");
-        data->lat = 59.3293;
-        data->lon = 18.0686;
-    } else {
-        // Default values for unknown cities
-        data->country = strdup("Unknown");
-        data->lat = 0.0;
-        data->lon = 0.0;
-    }
+    HTTPClient_GetGeo(data);
+
+    // // For now, hardcode some example values
+    // if (strcmp(data->city, "Stockholm") == 0) {
+    //     data->country = strdup("SE");
+    //     data->lat = 59.3293;
+    //     data->lon = 18.0686;
+    // } else {
+    //     // Default values for unknown cities
+    //     data->country = strdup("Unknown");
+    //     data->lat = 0.0;
+    //     data->lon = 0.0;
+    // }
+
+    printf("\n\n%s\n", data->response);
     
     return data;
 }
@@ -84,13 +89,13 @@ char* WeatherData_GeoToJson(const GeoData* _Data) {
     char* json = (char*)malloc(256);
     if (!json) return NULL;
     
-    // Format JSON string
-    snprintf(json, 256,
-             "{ \"city\":\"%s\",\"country\":\"%s\",\"lat\":%.4f,\"lon\":%.4f }",
-             _Data->city,
-             _Data->country,
-             _Data->lat,
-             _Data->lon);
+    // TODO: UPDATE RESPONSE
+    // snprintf(json, 256,
+    //          "{ \"city\":\"%s\",\"country\":\"%s\",\"lat\":%.4f,\"lon\":%.4f }",
+    //          _Data->city,
+    //          _Data->country,
+    //          _Data->lat,
+    //          _Data->lon);
     
     return json;
 }
