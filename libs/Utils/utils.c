@@ -12,7 +12,8 @@ uint64_t SystemMonotonicMS(void) {
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
-// Helper function to extract query parameter value
+// Helper function to extract query parameter value. 
+// Skips the '?' and '<param>='
 char* get_query_param(const char* url, const char* param) {
     char* query = strstr(url, "?");
     if (!query) return NULL;
