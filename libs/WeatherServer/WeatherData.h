@@ -6,7 +6,6 @@
 // Structure to hold parsed URL parameters for geo endpoint
 typedef struct {
     char* city;
-    char* country;
     char* response;
 } GeoData;
 
