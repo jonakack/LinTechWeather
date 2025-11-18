@@ -57,6 +57,7 @@ int TCPClient_Write(TCPClient* _Client, const uint8_t* _Buffer, int _Length)
     return send(_Client->fd, _Buffer, _Length, MSG_NOSIGNAL); // Non-blocking
 }
 
+// Returns number of bytes received
 int TCPClient_Read(TCPClient* _Client, uint8_t* _Buffer, int _Length)
 {
     return recv(_Client->fd, _Buffer, _Length, MSG_DONTWAIT); // Non-blocking
