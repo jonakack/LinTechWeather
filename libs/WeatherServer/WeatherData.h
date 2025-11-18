@@ -3,17 +3,20 @@
 
 #include "HTTPServerConnection.h"
 
-// Structure to hold parsed URL parameters for geo endpoint
+
 typedef struct {
     char* city;
     char* response;
+
 } GeoData;
 
-// Structure to hold weather data
+
 typedef struct {
-    double tempC;
-    char* weatherCode;
-    char* updatedAt;
+    char* latitude;
+    char* longitude;
+
+    char* response;
+
 } WeatherData;
 
 // Parse the URL and return geo data
