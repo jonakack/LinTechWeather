@@ -13,7 +13,7 @@ GeoData *WeatherData_ParseGeoRequest(const char *_Url)
     }
 
     // Allocate GeoData structure
-    GeoData *data = (GeoData *)calloc(0, sizeof(GeoData));
+    GeoData *data = (GeoData *)calloc(1, sizeof(GeoData));
     if (!data)
         return NULL;
 
@@ -39,7 +39,7 @@ WeatherData *WeatherData_ParseWeatherRequest(const char *_Url)
     }
 
     // Allocate WeatherData structure
-    WeatherData *data = (WeatherData *)calloc(0, sizeof(WeatherData));
+    WeatherData *data = (WeatherData *)calloc(1, sizeof(WeatherData));
     if (!data)
         return NULL;
 
