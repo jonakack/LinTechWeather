@@ -2,12 +2,17 @@
 #include "TCPClient.h"
 #include "HTTPClient.h"
 
-// https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true
+#define PORT "80"
 
+// ---------------------------------- Templates --------------------------------------------
+//
+// https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true
 // https://geocoding-api.open-meteo.com/v1/search?name=%s
+//
+// -----------------------------------------------------------------------------------------
 
 // TODO: Error handling
-
+// TODO: Add dynamic port
 
 // Gets a GeoData struct, assembles GET request and sends it to HTTPClient_Get
 // When done, it fills the data structure with JSON data from external API
@@ -22,7 +27,7 @@ int HTTPClient_GetGeoData(GeoData *_Data)
              "\r\n",
              _Data->city);
 
-    _Data->response = HTTPClient_Get("geocoding-api.open-meteo.com", "80", request);
+    _Data->response = HTTPClient_Get("geocoding-api.open-meteo.com", PORT, request);
 
     return 0;
 }
@@ -38,7 +43,7 @@ int HTTPClient_GetWeatherData(WeatherData *_Data)
          "User-Agent: TCPClient/1.0\r\n"
          "\r\n", _Data->latitude, _Data->longitude);
 
-    _Data->response = HTTPClient_Get("api.open-meteo.com", "80", request);
+    _Data->response = HTTPClient_Get("api.open-meteo.com", PORT, request);
 
     return 0;
 }
