@@ -61,12 +61,28 @@ void WeatherServer_TaskWork(void* _Context, uint64_t _MonTime)
 {
 	WeatherServer* _Server = (WeatherServer*)_Context;
 
+	// Process all instances
 	LinkedList_foreach(_Server->instances, node)
 	{
 		WeatherServerInstance* instance = (WeatherServerInstance*)node->item;
 		WeatherServerInstance_Work(instance, _MonTime);
 	}
 	
+	// Remove completed instances
+	Node* current = _Server->instances->head;
+	
+	while (current != NULL) {
+		WeatherServerInstance* instance = (WeatherServerInstance*)current->item;
+		Node* next = current->front;  // Save next before potential removal
+		
+		if (instance->completed) {
+			printf("WeatherServer: Removing completed instance\n");
+			// Use LinkedList_remove with WeatherServerInstance_Dispose (not _DisposePtr)
+			LinkedList_remove(_Server->instances, current, (void(*)(void*))WeatherServerInstance_Dispose);
+		}
+		
+		current = next;
+	}
 }
 
 void WeatherServer_Dispose(WeatherServer* _Server)

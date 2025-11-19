@@ -9,6 +9,7 @@
 typedef struct
 {
 	HTTPServerConnection* connection;
+	int completed;
 
 } WeatherServerInstance;
 

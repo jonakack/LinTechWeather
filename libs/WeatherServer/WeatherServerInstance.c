@@ -14,6 +14,7 @@ int WeatherServerInstance_OnRequest(void* _Context);
 int WeatherServerInstance_Initiate(WeatherServerInstance* _Instance, HTTPServerConnection* _Connection)
 {
 	_Instance->connection = _Connection;
+	_Instance->completed = 0;
 
 	HTTPServerConnection_SetCallback(_Instance->connection, _Instance, WeatherServerInstance_OnRequest);
 
@@ -49,9 +50,14 @@ int WeatherServerInstance_OnRequest(void* _Context)
     return 0;
 }
 
-void WeatherServerInstance_Work(WeatherServerInstance* _Server, uint64_t _MonTime)
+void WeatherServerInstance_Work(WeatherServerInstance* _Instance, uint64_t _MonTime)
 {
-	
+	// Check if the HTTP connection has finished processing the request
+	if (_Instance->connection && _Instance->connection->requestReceived && !_Instance->completed) {
+		// Mark this instance as completed and ready for cleanup
+		_Instance->completed = 1;
+		printf("WeatherServerInstance: Instance completed, marked for cleanup\n");
+	}
 }
 
 void WeatherServerInstance_Dispose(WeatherServerInstance* _Instance)

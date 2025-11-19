@@ -104,6 +104,12 @@ void TCPServer_TaskWork(void* _Context, uint64_t _MonTime)
 
 void TCPServer_Dispose(TCPServer* _Server)
 {
+	// Close the listening socket
+	if (_Server->listen_fd >= 0) {
+		close(_Server->listen_fd);
+		_Server->listen_fd = -1;
+	}
+	
 	smw_destroyTask(_Server->task);
 }
 
