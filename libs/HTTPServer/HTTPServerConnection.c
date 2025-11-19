@@ -137,17 +137,20 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		
 		// Markera att vi har fått requesten
 		_Connection->requestReceived = 1;
+
+		HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY
 		
-		// Om det är en HTTP GET, anropa callback
-		if (strcmp(_Connection->method, "GET") == 0)
-		{
-			if (_Connection->onRequest != NULL)
-			{
-				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
-				HTTPServerConnection_Dispose(_Connection);
-			}
-		}
-		else HTTPServerConnection_Dispose(_Connection);
+		// // Om det är en HTTP GET, anropa callback
+		// if (strcmp(_Connection->method, "GET") == 0)
+		// {
+		// 	if (_Connection->onRequest != NULL)
+		// 	{
+		// 		_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
+		// 		HTTPServerConnection_Dispose(_Connection);
+		// 	}
+		// }
+		// else 
+		HTTPServerConnection_Dispose(_Connection);
     }
 }
 
@@ -178,4 +181,26 @@ void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr)
 	HTTPServerConnection_Dispose(*(_ConnectionPtr));
 	free(*(_ConnectionPtr));
 	*(_ConnectionPtr) = NULL;
+}
+
+void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection)
+{
+    char response[2048];
+    
+    // Echo back what we parsed
+    snprintf(response, sizeof(response),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Method: %s\n"
+        "URL: %s\n"
+        "Request Received: %s\n",
+        _Connection->method ? _Connection->method : "NULL",
+        _Connection->url ? _Connection->url : "NULL", 
+        _Connection->requestReceived ? "YES" : "NO"
+    );
+    
+    // Send response back through TCPClient
+    TCPClient_Write(&_Connection->tcpClient, (uint8_t*)response, strlen(response));
 }

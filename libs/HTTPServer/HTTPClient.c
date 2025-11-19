@@ -141,7 +141,7 @@ char *HTTPClient_Get(char *_Host, char *_Port, char *_Request)
 
     strcpy(response, temp_response);
 
-    printf("HTTPClient: Printing response (%d bytes):\n%s\n", total_bytes, response);
+    // printf("HTTPClient: Printing response (%d bytes):\n%s\n", total_bytes, response);
 
     TCPClient_Dispose(&client);
     return response;

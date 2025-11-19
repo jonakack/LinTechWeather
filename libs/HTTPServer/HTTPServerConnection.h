@@ -14,6 +14,7 @@ typedef struct
 	HTTPServerConnection_OnRequest onRequest;
 	char* method;
 	char* url;
+	char *requestString;
 	int requestReceived;
 
 	smw_task* task;
@@ -28,5 +29,7 @@ void HTTPServerConnection_SetCallback(HTTPServerConnection* _Connection, void* _
 void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime);
 void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection);
 void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr);
+
+void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection);
 
 #endif //__HTTPServerConnection_h_
