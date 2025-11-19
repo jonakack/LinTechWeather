@@ -14,7 +14,8 @@ typedef struct
 	HTTPServerConnection_OnRequest onRequest;
 	char* method;
 	char* url;
-	char *requestString;
+	char* requestString;
+	char* raw_request;
 	int requestReceived;
 
 	smw_task* task;

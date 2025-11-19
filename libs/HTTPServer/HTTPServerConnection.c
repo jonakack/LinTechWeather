@@ -17,6 +17,8 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 	// Initiera alla fält
 	_Connection->method = NULL;
 	_Connection->url = NULL;
+	_Connection->requestString = NULL;
+	_Connection->raw_request = NULL;
 	_Connection->context = NULL;
 	_Connection->onRequest = NULL;
 	_Connection->requestReceived = 0;
@@ -91,6 +93,14 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 	{
 		// Inkomplett request, vänta på mer data
 		return;
+	}
+
+	// Store the full raw request
+	size_t buffer_len = strlen(buffer);
+	_Connection->raw_request = (char*)malloc(buffer_len + 1);
+	if (_Connection->raw_request != NULL)
+	{
+		strcpy(_Connection->raw_request, buffer);
 	}
 	
 	// Parsa första raden: "GET /index.html HTTP/1.1"
@@ -168,6 +178,16 @@ void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 		free(_Connection->url);
 		_Connection->url = NULL;
 	}
+	if(_Connection->requestString != NULL)
+	{
+		free(_Connection->requestString);
+		_Connection->requestString = NULL;
+	}
+	if(_Connection->raw_request != NULL)
+	{
+		free(_Connection->raw_request);
+		_Connection->raw_request = NULL;
+	}
 	
 	TCPClient_Dispose(&_Connection->tcpClient);
 	smw_destroyTask(_Connection->task);
@@ -185,7 +205,7 @@ void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr)
 
 void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection)
 {
-    char response[2048];
+    char response[8192];  // Increased size for full request
     
     // Echo back what we parsed
     snprintf(response, sizeof(response),
@@ -195,10 +215,14 @@ void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection)
         "\r\n"
         "Method: %s\n"
         "URL: %s\n"
-        "Request Received: %s\n",
+        "Request Received: %s\n"
+        "\n--- Full Request with Headers ---\n"
+        "%s"
+        "--- End Request ---\n",
         _Connection->method ? _Connection->method : "NULL",
         _Connection->url ? _Connection->url : "NULL", 
-        _Connection->requestReceived ? "YES" : "NO"
+        _Connection->requestReceived ? "YES" : "NO",
+        _Connection->raw_request ? _Connection->raw_request : "No raw request stored"
     );
     
     // Send response back through TCPClient
