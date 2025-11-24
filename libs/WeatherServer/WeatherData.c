@@ -141,7 +141,9 @@ static char *WeatherData_HttpResponseToJson(const char *response)
     if (!json)
         return NULL;
 
-    strcpy(json, body_start);
+    // strcpy(json, body_start);
+    memcpy(json, body_start, body_len);
+    json[body_len] = '\0';
     return json;
 }
 

@@ -104,15 +104,19 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		_Connection->method = (char*)malloc(method_len + 1);
 		if (_Connection->method != NULL)
 		{
-			strcpy(_Connection->method, method);
+			// strcpy(_Connection->method, method);
+			strncpy(_Connection->method, method, method_len);
+			_Connection->method[method_len] = '\0';
 		}
-		
+
 		// Allokera och spara url
 		size_t url_len = strlen(url);
 		_Connection->url = (char*)malloc(url_len + 1);
 		if (_Connection->url != NULL)
 		{
-			strcpy(_Connection->url, url);
+			// strcpy(_Connection->url, url);
+			strncpy(_Connection->url, url, url_len);
+			_Connection->url[url_len] = '\0';
 		}
 
 		// Läs in alla headers (men ignorera dem för tillfället)
