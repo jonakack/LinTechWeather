@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #ifndef smw_max_tasks
-	#define smw_max_tasks 16
+	#define smw_max_tasks 1000
 #endif
 
 typedef struct

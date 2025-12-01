@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include "smw.h"
 
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 1000
 
 typedef int (*TCPServer_OnAccept)(int client_fd, void* context);
 

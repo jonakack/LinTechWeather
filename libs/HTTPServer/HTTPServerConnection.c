@@ -17,6 +17,8 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 	// Initiera alla fält
 	_Connection->method = NULL;
 	_Connection->url = NULL;
+	_Connection->requestString = NULL;
+	_Connection->raw_request = NULL;
 	_Connection->context = NULL;
 	_Connection->onRequest = NULL;
 	_Connection->requestReceived = 0;
@@ -92,6 +94,14 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		// Inkomplett request, vänta på mer data
 		return;
 	}
+
+	// Store the full raw request
+	size_t buffer_len = strlen(buffer);
+	_Connection->raw_request = (char*)malloc(buffer_len + 1);
+	if (_Connection->raw_request != NULL)
+	{
+		strcpy(_Connection->raw_request, buffer);
+	}
 	
 	// Parsa första raden: "GET /index.html HTTP/1.1"
 	char method[16] = {0};
@@ -141,17 +151,20 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		
 		// Markera att vi har fått requesten
 		_Connection->requestReceived = 1;
+
+		HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY
 		
-		// Om det är en HTTP GET, anropa callback
-		if (strcmp(_Connection->method, "GET") == 0)
-		{
-			if (_Connection->onRequest != NULL)
-			{
-				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
-				HTTPServerConnection_Dispose(_Connection);
-			}
-		}
-		else HTTPServerConnection_Dispose(_Connection);
+		// // Om det är en HTTP GET, anropa callback
+		// if (strcmp(_Connection->method, "GET") == 0)
+		// {
+		// 	if (_Connection->onRequest != NULL)
+		// 	{
+		// 		_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
+		// 		HTTPServerConnection_Dispose(_Connection);
+		// 	}
+		// }
+		// else 
+		HTTPServerConnection_Dispose(_Connection);
     }
 }
 
@@ -169,6 +182,16 @@ void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 		free(_Connection->url);
 		_Connection->url = NULL;
 	}
+	if(_Connection->requestString != NULL)
+	{
+		free(_Connection->requestString);
+		_Connection->requestString = NULL;
+	}
+	if(_Connection->raw_request != NULL)
+	{
+		free(_Connection->raw_request);
+		_Connection->raw_request = NULL;
+	}
 	
 	TCPClient_Dispose(&_Connection->tcpClient);
 	smw_destroyTask(_Connection->task);
@@ -182,4 +205,30 @@ void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr)
 	HTTPServerConnection_Dispose(*(_ConnectionPtr));
 	free(*(_ConnectionPtr));
 	*(_ConnectionPtr) = NULL;
+}
+
+void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection)
+{
+    char response[8192];  // Increased size for full request
+    
+    // Echo back what we parsed
+    snprintf(response, sizeof(response),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Method: %s\n"
+        "URL: %s\n"
+        "Request Received: %s\n"
+        "\n--- Full Request with Headers ---\n"
+        "%s"
+        "--- End Request ---\n",
+        _Connection->method ? _Connection->method : "NULL",
+        _Connection->url ? _Connection->url : "NULL", 
+        _Connection->requestReceived ? "YES" : "NO",
+        _Connection->raw_request ? _Connection->raw_request : "No raw request stored"
+    );
+    
+    // Send response back through TCPClient
+    TCPClient_Write(&_Connection->tcpClient, (uint8_t*)response, strlen(response));
 }

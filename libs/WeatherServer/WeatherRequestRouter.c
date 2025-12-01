@@ -33,6 +33,10 @@ RouteResult WeatherRequestRouter_HandleRequest(HTTPServerConnection* _Connection
     char* json_response = NULL;
 
     // Route to appropriate handler based on URL path
+    // if (WeatherRequestRouter_PathMatches(url, "/test")) {
+    //     json_response = WeatherRequestHandler_HandleTestRequest(url);
+    //     printf("\nTest\n");
+    // }
     if (WeatherRequestRouter_PathMatches(url, "/api/v1/geo")) {
         json_response = WeatherRequestHandler_HandleGeoRequest(url);
     }
