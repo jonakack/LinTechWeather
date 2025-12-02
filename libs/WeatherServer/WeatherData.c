@@ -5,13 +5,10 @@
 #include "WeatherData.h"
 #include "utils.h"
 
+
 GeoData *WeatherData_ParseGeoRequest(const char *_Url)
 {
-    if (strncmp(_Url, "/api/v1/geo", 11) != 0)
-    {
-        return NULL;
-    }
-
+    
     // Allocate GeoData structure
     GeoData *data = (GeoData *)calloc(1, sizeof(GeoData));
     if (!data)
@@ -43,19 +40,13 @@ GeoData *WeatherData_ParseGeoRequest(const char *_Url)
         return NULL;
     }
 
-    HTTPClient_GetGeoData(data);
-
     return data;
+
 }
 
 WeatherData *WeatherData_ParseWeatherRequest(const char *_Url)
 {
-    // Check if URL starts with weather API endpoint
-    if (strncmp(_Url, "/api/v1/weather", 14) != 0)
-    {
-        return NULL;
-    }
-
+    
     // Allocate WeatherData structure
     WeatherData *data = (WeatherData *)calloc(1, sizeof(WeatherData));
     if (!data)
@@ -81,9 +72,8 @@ WeatherData *WeatherData_ParseWeatherRequest(const char *_Url)
         return NULL;
     }
 
-    HTTPClient_GetWeatherData(data);
-
     return data;
+
 }
 
 // Shared function to parse HTTP response to clean JSON

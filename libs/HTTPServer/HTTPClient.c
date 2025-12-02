@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "TCPClient.h"
 #include "HTTPClient.h"
+#include "cache.h"
 
 #define PORT "80"
 
@@ -16,7 +17,7 @@
 
 // Gets a GeoData struct, assembles GET request and sends it to HTTPClient_Get
 // When done, it fills the data structure with JSON data from external API
-int HTTPClient_GetGeoData(GeoData *_Data)
+int HTTPClient_GetGeoData(AllData *_AllData)
 {
     char request[512];
     snprintf(request, sizeof(request),
@@ -25,15 +26,17 @@ int HTTPClient_GetGeoData(GeoData *_Data)
              "Connection: close\r\n"
              "User-Agent: TCPClient/1.0\r\n"
              "\r\n",
-             _Data->city);
+             _AllData->GeoData->city);
 
-    _Data->response = HTTPClient_Get("geocoding-api.open-meteo.com", PORT, request);
+    _AllData->GeoData->response = HTTPClient_Get("geocoding-api.open-meteo.com", PORT, request);
+    Cache_SaveData(_AllData, "geo");
+    
 
     return 0;
 }
 
 // If path is /api/v1/weather
-int HTTPClient_GetWeatherData(WeatherData *_Data)
+int HTTPClient_GetWeatherData(AllData *_AllData)
 {
     char request[512];
     snprintf(request, sizeof(request),
@@ -41,9 +44,10 @@ int HTTPClient_GetWeatherData(WeatherData *_Data)
          "Host: api.open-meteo.com\r\n"
          "Connection: close\r\n"
          "User-Agent: TCPClient/1.0\r\n"
-         "\r\n", _Data->latitude, _Data->longitude);
+         "\r\n", _AllData->WeatherData->latitude, _AllData->WeatherData->longitude);
 
-    _Data->response = HTTPClient_Get("api.open-meteo.com", PORT, request);
+    _AllData->WeatherData->response = HTTPClient_Get("api.open-meteo.com", PORT, request);
+    Cache_SaveData(_AllData, "weather");
 
     return 0;
 }

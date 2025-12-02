@@ -5,19 +5,26 @@
 
 
 typedef struct {
+
     char* city;
     char* response;
 
 } GeoData;
 
-
 typedef struct {
+
     char* latitude;
     char* longitude;
-
     char* response;
 
 } WeatherData;
+
+typedef struct {
+    
+    GeoData* GeoData;
+    WeatherData* WeatherData;
+    
+} AllData;
 
 // Parse the URL and return geo data
 GeoData* WeatherData_ParseGeoRequest(const char* _Url);

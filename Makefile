@@ -14,7 +14,8 @@ CFLAGS_BASE=-Wall -Wno-psabi -Werror \
 	-I libs/HTTPServer \
 	-I libs/TCP \
 	-I libs/Utils \
-	-I libs/WeatherServer
+	-I libs/WeatherServer \
+	-I libs/Utils/cJSON
 
 # Select flags per mode (OPTIMIZE goes into CFLAGS in release; LTO linked only in release)
 ifeq ($(MODE),debug)
