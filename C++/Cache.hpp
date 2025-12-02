@@ -15,6 +15,7 @@ class Cache
         explicit Cache(const std::string &path);
 
         bool exists() const;
+        bool isOld(int maxAgeSeconds = 900) const;  
         std::string load() const;
         void save(const std::string &data) const;
 

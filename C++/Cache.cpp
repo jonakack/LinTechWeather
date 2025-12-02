@@ -1,4 +1,6 @@
-#include "cache.hpp"
+#include "Cache.hpp"
+#include <sys/stat.h>
+#include <ctime>
 
 std::string readFile(const std::string &path)
 {
@@ -42,7 +44,15 @@ void Cache::save(const std::string &data) const
     writeFile(path, data);
 }
 
-bool Cache::isold() const
+bool Cache::isOld(int maxAgeSeconds) const
 {
-    
+    if (!exists()) return true;  
+
+    struct stat fileStat;
+    if (stat(path.c_str(), &fileStat) != 0) return true;  
+
+    time_t now = time(nullptr);
+    time_t fileAge = now - fileStat.st_mtime;  
+
+    return fileAge > maxAgeSeconds;  
 }

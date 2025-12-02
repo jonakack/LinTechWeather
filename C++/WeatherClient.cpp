@@ -15,16 +15,16 @@ std::string WeatherClient::fetchWeather(const std::string &location)
 
 std::string WeatherClient::fetchWeatherFresh(const std::string &location)
 {
-    return doFetch(location, false);
+    return doFetch(location, false); 
 }
 
 std::string WeatherClient::doFetch(const std::string &location, bool useCache)
 {
-    std::string cachePath = getCachePath(location);
+    std::string cachePath = getCachePath(location); 
     Cache cache(cachePath);
 
-    // Använd cache om tillgängligt
-    if (useCache && cache.exists()) 
+    // Använd cache om tillgängligt OCH inte äldre än 15 minuter
+    if (useCache && cache.exists() && !cache.isOld())
     {
         std::cout << "Using cached data for " << location << std::endl;
         return cache.load();
