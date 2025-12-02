@@ -19,13 +19,6 @@ typedef struct {
 
 } WeatherData;
 
-typedef struct {
-    
-    GeoData* GeoData;
-    WeatherData* WeatherData;
-    
-} AllData;
-
 // Parse the URL and return geo data
 GeoData* WeatherData_ParseGeoRequest(const char* _Url);
 

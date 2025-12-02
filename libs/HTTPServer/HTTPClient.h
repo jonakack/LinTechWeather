@@ -5,8 +5,8 @@
 
 char *HTTPClient_Get(char *_Host, char *_Port, char *_Request);
 
-int HTTPClient_GetGeoData(AllData* _Data);
+int HTTPClient_GetGeoData(GeoData* _Data);
 
-int HTTPClient_GetWeatherData(AllData *_Data);
+int HTTPClient_GetWeatherData(WeatherData *_Data);
 
 #endif // _HTTPCLIENT_H_

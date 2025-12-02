@@ -152,18 +152,17 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		// Markera att vi har fått requesten
 		_Connection->requestReceived = 1;
 
-		HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY
-		
-		// // Om det är en HTTP GET, anropa callback
-		// if (strcmp(_Connection->method, "GET") == 0)
-		// {
-		// 	if (_Connection->onRequest != NULL)
-		// 	{
-		// 		_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
-		// 		HTTPServerConnection_Dispose(_Connection);
-		// 	}
-		// }
-		// else 
+		// HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY - disabled for production
+
+		// Om det är en HTTP GET, anropa callback
+		if (strcmp(_Connection->method, "GET") == 0)
+		{
+			if (_Connection->onRequest != NULL)
+			{
+				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
+			}
+		}
+
 		HTTPServerConnection_Dispose(_Connection);
     }
 }

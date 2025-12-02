@@ -18,36 +18,26 @@
 #define MKDIR(path) mkdir(path, 0777)
 #endif
 
-// Defines to differentiate between WeatherData and GeoData
-
-int Cache_CheckExisting(AllData *_City, int DataType)
+int Cache_CheckExistingGeoData(GeoData *_Data)
 {
+    if (_Data == NULL || _Data->city == NULL)
+    {
+        printf("Invalid GeoData\n");
+        return ERROR;
+    }
+
     char folder[100];
     char target_filename[100];
     char full_path[200];
 
-    if (DataType == IS_GEODATA)
-    {
-        snprintf (folder, sizeof(folder), "../../cache/citydata");
-        sprintf(target_filename, "%s.json", _City->GeoData->city);
-        sprintf(full_path, "%s/%s", folder, target_filename);
-    }
-    else if (DataType == IS_WEATHERDATA)
-    {
-        snprintf (folder, sizeof(folder), "../../cache/weatherdata");
-        sprintf(target_filename, "%s_%s.json", _City->WeatherData->latitude, _City->WeatherData->longitude);
-        sprintf(full_path, "%s/%s", folder, target_filename);
-    }
-    else
-    {
-        printf("Invalid DataType\n");
-        return ERROR;
-    }
+    snprintf(folder, sizeof(folder), "./libs/WeatherServer/cache/geodata");
+    sprintf(target_filename, "%s.json", _Data->city);
+    sprintf(full_path, "%s/%s", folder, target_filename);
 
     DIR *dir = opendir(folder);
     if (dir == NULL)
     {
-        printf("Could not open folder %s", folder);
+        printf("Could not open folder %s\n", folder);
         return DOES_NOT_EXIST;
     }
 
@@ -62,7 +52,55 @@ int Cache_CheckExisting(AllData *_City, int DataType)
             if (cache_status == OUT_OF_DATE)
             {
                 printf("File is outdated\n");
-                return OUT_OF_DATE; // File exists but is outdated
+                return OUT_OF_DATE;
+            }
+            else if (cache_status == UP_TO_DATE)
+            {
+                printf("File is up to date\n");
+                return UP_TO_DATE;
+            }
+        }
+    }
+    closedir(dir);
+    printf("File does not exist\n");
+    return DOES_NOT_EXIST;
+}
+
+int Cache_CheckExistingWeatherData(WeatherData *_Data)
+{
+    if (_Data == NULL || _Data->latitude == NULL || _Data->longitude == NULL)
+    {
+        printf("Invalid WeatherData\n");
+        return ERROR;
+    }
+
+    char folder[100];
+    char target_filename[100];
+    char full_path[200];
+
+    snprintf(folder, sizeof(folder), "./libs/WeatherServer/cache/weatherdata");
+    sprintf(target_filename, "%s_%s.json", _Data->latitude, _Data->longitude);
+    sprintf(full_path, "%s/%s", folder, target_filename);
+
+    DIR *dir = opendir(folder);
+    if (dir == NULL)
+    {
+        printf("Could not open folder %s\n", folder);
+        return DOES_NOT_EXIST;
+    }
+
+    // Loop through all files in the directory
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, target_filename) == 0)
+        {
+            closedir(dir);
+            int cache_status = Cache_CheckDataAge(full_path);
+            if (cache_status == OUT_OF_DATE)
+            {
+                printf("File is outdated\n");
+                return OUT_OF_DATE;
             }
             else if (cache_status == UP_TO_DATE)
             {
@@ -72,134 +110,144 @@ int Cache_CheckExisting(AllData *_City, int DataType)
                 {
                     return OUT_OF_DATE;
                 }
-                return UP_TO_DATE; // File exists
+                return UP_TO_DATE;
             }
         }
     }
     closedir(dir);
     printf("File does not exist\n");
-    return DOES_NOT_EXIST; // File does not exist
+    return DOES_NOT_EXIST;
 }
 
-int Cache_SaveData(AllData *_Data, char *_Type)
+int Cache_SaveGeoDataJson(const char *_City, const char *_JsonData)
 {
-    //-----Check what type of data user wants to save (geo or weather)-------
-
-    int dataType = 0;
-
-    if (strcmp(_Type, "geo"))
+    if (_City == NULL || _JsonData == NULL)
     {
-        dataType = IS_GEODATA;
+        printf("Error: Invalid parameters for Cache_SaveGeoDataJson\n");
+        return ERROR;
     }
-    else if (strcmp(_Type, "weather"))
-    {
-        dataType = IS_WEATHERDATA;
-    }
-    else
-    {
-        printf("Error: Invalid datatype\n");
-        return 1;
-    }
-
-    //--------Initialize file pointer----------------------------------------
 
     FILE *fptr = NULL;
-    char filename[100];
+    char filename[256];
     int result = -3;
 
-    cJSON *json_obj = NULL;
-
-    if (IS_GEODATA)
+    // Create cache directory structure
+    if (MKDIR("./libs/WeatherServer/cache") != 0 && errno != EEXIST)
     {
-        json_obj = cJSON_Parse(_Data->GeoData->response);        // Parse data
-    } else {
-        json_obj = cJSON_Parse(_Data->WeatherData->response);    // Parse data
-    }
-
-
-    char *httpData_json = cJSON_Print(json_obj); // Put parsed JSON data into a string
-
-    //-------Create folder called "cache"------------------------------------
-
-    if (MKDIR("../../cache") != 0 && errno != EEXIST)
-    {
-        perror("Failed to create directory");
+        perror("Failed to create cache directory");
         result = ERROR;
         goto cleanup;
     }
 
-    //-------Create folder called "geodata" if geo was selected--------------
-
-    if (dataType == IS_GEODATA)
+    // Create geodata directory
+    if (MKDIR("./libs/WeatherServer/cache/geodata") != 0 && errno != EEXIST)
     {
-        if (MKDIR("../../cache/geodata") != 0 && errno != EEXIST)
-        {
-            perror("Failed to create directory");
-            result = ERROR;
-            goto cleanup;
-        }
+        perror("Failed to create geodata directory");
+        result = ERROR;
+        goto cleanup;
     }
 
-    //-------Create folder called "weatherdata" if data was selected---------
+    // Create filename
+    sprintf(filename, "./libs/WeatherServer/cache/geodata/%s.json", _City);
 
-    if (dataType == IS_WEATHERDATA)
-    {
-        if (MKDIR("../../cache/weatherdata") != 0 && errno != EEXIST)
-        {
-            perror("Failed to create directory");
-            result = ERROR;
-            goto cleanup;
-        }
-    }
-
-    //-------If geodata, set a geo name--------------------------------------
-
-    if (dataType == IS_GEODATA)
-    {
-        sprintf(filename, "../../cache/geodata/%s.json", _Data->GeoData->city);
-    }
-
-    //-------If weatherdata, set a weather name------------------------------
-
-    if (dataType == IS_WEATHERDATA)
-    {
-        sprintf(filename, "../../cache/weatherdata/%s_%s.json", _Data->WeatherData->latitude, _Data->WeatherData->longitude);
-    }
-
-    //-------Create file in data folder--------------------------------------
-
+    // Write to file
     if ((fptr = fopen(filename, "w")) == NULL)
     {
-        perror("Failed to open file");
+        perror("Failed to open file for geo data");
         result = ERROR;
         goto cleanup;
     }
-    else
+
+    size_t json_len = strlen(_JsonData);
+    size_t written = fwrite(_JsonData, 1, json_len, fptr);
+    if (written != json_len)
     {
-        if (fprintf(fptr, "%s", httpData_json) < OK)
-        {
-            perror("Failed to write to file");
-            result = ERROR;
-            goto cleanup;
-        }
-        if (fclose(fptr) != OK)
-        {
-            perror("Failed to close file");
-            result = ERROR;
-            goto cleanup;
-        }
-        fptr = NULL;
+        perror("Failed to write complete JSON to file");
+        result = ERROR;
+        goto cleanup;
     }
-    result = 0; // Success
-    goto cleanup;
+
+    if (fclose(fptr) != OK)
+    {
+        perror("Failed to close file");
+        result = ERROR;
+        goto cleanup;
+    }
+    fptr = NULL;
+    result = OK; // Success
+    printf("Successfully saved geo data cache for %s\n", _City);
 
 cleanup:
     if (fptr != NULL)
     {
         fclose(fptr);
     }
-    free(httpData_json);
-    cJSON_Delete(json_obj);
+    return result;
+}
+
+int Cache_SaveWeatherDataJson(const char *_Latitude, const char *_Longitude, const char *_JsonData)
+{
+    if (_Latitude == NULL || _Longitude == NULL || _JsonData == NULL)
+    {
+        printf("Error: Invalid parameters for Cache_SaveWeatherDataJson\n");
+        return ERROR;
+    }
+
+    FILE *fptr = NULL;
+    char filename[256];
+    int result = -3;
+
+    // Create cache directory structure
+    if (MKDIR("./libs/WeatherServer/cache") != 0 && errno != EEXIST)
+    {
+        perror("Failed to create cache directory");
+        result = ERROR;
+        goto cleanup;
+    }
+
+    // Create weatherdata directory
+    if (MKDIR("./libs/WeatherServer/cache/weatherdata") != 0 && errno != EEXIST)
+    {
+        perror("Failed to create weatherdata directory");
+        result = ERROR;
+        goto cleanup;
+    }
+
+    // Create filename
+    sprintf(filename, "./libs/WeatherServer/cache/weatherdata/%s_%s.json", _Latitude, _Longitude);
+
+    // Write to file
+    if ((fptr = fopen(filename, "w")) == NULL)
+    {
+        perror("Failed to open file for weather data");
+        result = ERROR;
+        goto cleanup;
+    }
+
+    size_t json_len = strlen(_JsonData);
+    size_t written = fwrite(_JsonData, 1, json_len, fptr);
+    if (written != json_len)
+    {
+        perror("Failed to write complete JSON to file");
+        result = ERROR;
+        goto cleanup;
+    }
+
+    if (fclose(fptr) != OK)
+    {
+        perror("Failed to close file");
+        result = ERROR;
+        goto cleanup;
+    }
+    fptr = NULL;
+    result = OK; // Success
+    printf("Successfully saved weather data cache for %s, %s\n", _Latitude, _Longitude);
+
+cleanup:
+    if (fptr != NULL)
+    {
+        fclose(fptr);
+    }
     return result;
 }
 

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include "TCPClient.h"
 #include "HTTPClient.h"
-#include "cache.h"
 
 #define PORT "80"
 
@@ -17,8 +16,14 @@
 
 // Gets a GeoData struct, assembles GET request and sends it to HTTPClient_Get
 // When done, it fills the data structure with JSON data from external API
-int HTTPClient_GetGeoData(AllData *_AllData)
+int HTTPClient_GetGeoData(GeoData *_Data)
 {
+    if (_Data == NULL || _Data->city == NULL)
+    {
+        printf("HTTPClient: Invalid GeoData\n");
+        return -1;
+    }
+
     char request[512];
     snprintf(request, sizeof(request),
              "GET /v1/search?name=%s HTTP/1.1\r\n"
@@ -26,28 +31,41 @@ int HTTPClient_GetGeoData(AllData *_AllData)
              "Connection: close\r\n"
              "User-Agent: TCPClient/1.0\r\n"
              "\r\n",
-             _AllData->GeoData->city);
+             _Data->city);
 
-    _AllData->GeoData->response = HTTPClient_Get("geocoding-api.open-meteo.com", PORT, request);
-    Cache_SaveData(_AllData, "geo");
-    
+    _Data->response = HTTPClient_Get("geocoding-api.open-meteo.com", PORT, request);
+    if (_Data->response == NULL)
+    {
+        printf("HTTPClient: Failed to get response\n");
+        return -1;
+    }
 
     return 0;
 }
 
 // If path is /api/v1/weather
-int HTTPClient_GetWeatherData(AllData *_AllData)
+int HTTPClient_GetWeatherData(WeatherData *_Data)
 {
+    if (_Data == NULL || _Data->latitude == NULL || _Data->longitude == NULL)
+    {
+        printf("HTTPClient: Invalid WeatherData\n");
+        return -1;
+    }
+
     char request[512];
     snprintf(request, sizeof(request),
          "GET /v1/forecast?latitude=%s&longitude=%s&current_weather=true HTTP/1.1\r\n"
          "Host: api.open-meteo.com\r\n"
          "Connection: close\r\n"
          "User-Agent: TCPClient/1.0\r\n"
-         "\r\n", _AllData->WeatherData->latitude, _AllData->WeatherData->longitude);
+         "\r\n", _Data->latitude, _Data->longitude);
 
-    _AllData->WeatherData->response = HTTPClient_Get("api.open-meteo.com", PORT, request);
-    Cache_SaveData(_AllData, "weather");
+    _Data->response = HTTPClient_Get("api.open-meteo.com", PORT, request);
+    if (_Data->response == NULL)
+    {
+        printf("HTTPClient: Failed to get response\n");
+        return -1;
+    }
 
     return 0;
 }

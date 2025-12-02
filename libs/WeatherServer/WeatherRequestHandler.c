@@ -11,36 +11,32 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
     if (_Url == NULL) {
         return NULL;
     }
-    
+
     // Parse geo request from URL
-    GeoData* geo_data = WeatherData_ParseGeoRequest(_Url);
-    if (geo_data == NULL) {
+    GeoData* _GeoData = WeatherData_ParseGeoRequest(_Url);
+    if (_GeoData == NULL) {
         return NULL;
     }
-    
-    // Create AllData wrapper for cache functions
-    AllData allData = {0};
-    allData.GeoData = geo_data;
-    
+
     char* json_response = NULL;
-    
+
     // Check if file exists and is up to date
-    int cache_status = Cache_CheckExisting(&allData, IS_GEODATA);
-    
+    int cache_status = Cache_CheckExistingGeoData(_GeoData);
+
     if (cache_status == UP_TO_DATE) {
         // Read from cache file
         char filename[256];
-        snprintf(filename, sizeof(filename), "../../cache/geodata/%s.json", geo_data->city);
-        
+        snprintf(filename, sizeof(filename), "./libs/WeatherServer/cache/geodata/%s.json", _GeoData->city);
+
         printf("Reading cached geo data from: %s\n", filename);
-        
+
         FILE* fptr = fopen(filename, "r");
         if (fptr != NULL) {
             // Get file size
             fseek(fptr, 0, SEEK_END);
             long file_size = ftell(fptr);
             fseek(fptr, 0, SEEK_SET);
-            
+
             // Allocate buffer and read
             json_response = malloc(file_size + 1);
             if (json_response != NULL) {
@@ -49,37 +45,37 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
             }
             fclose(fptr);
         }
-        
+
         if (json_response == NULL) {
             printf("Failed to read cache, fetching new data\n");
             cache_status = DOES_NOT_EXIST; // Force fetch
         }
     }
-    
+
     if (cache_status != UP_TO_DATE) {
         // Fetch new data
-        printf("Fetching new geo data for: %s\n", geo_data->city);
-        
-        if (HTTPClient_GetGeoData(geo_data) != 0) {
+        printf("Fetching new geo data for: %s\n", _GeoData->city);
+
+        if (HTTPClient_GetGeoData(_GeoData) != 0) {
             printf("Failed to fetch geo data\n");
-            WeatherData_FreeGeoData(geo_data);
+            WeatherData_FreeGeoData(_GeoData);
             return NULL;
         }
-        
+
         // Convert to JSON
-        json_response = WeatherData_GeoToJson(geo_data);
-        
+        json_response = WeatherData_GeoToJson(_GeoData);
+
+        // Save to cache
         if (json_response != NULL) {
-            // Save to cache
-            if (Cache_SaveData(&allData, "geo") != 0) {
-                printf("Warning: Failed to save to cache\n");
+            if (Cache_SaveGeoDataJson(_GeoData->city, json_response) != 0) {
+                printf("Warning: Failed to save geo data to cache\n");
             }
         }
     }
-    
+
     // Free geo data
-    WeatherData_FreeGeoData(geo_data);
-    
+    WeatherData_FreeGeoData(_GeoData);
+
     return json_response;
 }
 
@@ -88,38 +84,34 @@ char* WeatherRequestHandler_HandleWeatherRequest(const char* _Url)
     if (_Url == NULL) {
         return NULL;
     }
-    
+
     // Parse weather request from URL
-    WeatherData* weather_data = WeatherData_ParseWeatherRequest(_Url);
-    if (weather_data == NULL) {
+    WeatherData* _WeatherData = WeatherData_ParseWeatherRequest(_Url);
+    if (_WeatherData == NULL) {
         return NULL;
     }
-    
-    // Create AllData wrapper for cache functions
-    AllData allData = {0};
-    allData.WeatherData = weather_data;
-    
+
     char* json_response = NULL;
-    
+
     // Check if file exists and is up to date
-    int cache_status = Cache_CheckExisting(&allData, IS_WEATHERDATA);
-    
+    int cache_status = Cache_CheckExistingWeatherData(_WeatherData);
+
     if (cache_status == UP_TO_DATE) {
         // Read from cache file
         char filename[256];
-        snprintf(filename, sizeof(filename), 
-                 "../../cache/weatherdata/%s_%s.json",
-                 weather_data->latitude, weather_data->longitude);
-        
+        snprintf(filename, sizeof(filename),
+                 "./libs/WeatherServer/cache/weatherdata/%s_%s.json",
+                 _WeatherData->latitude, _WeatherData->longitude);
+
         printf("Reading cached weather data from: %s\n", filename);
-        
+
         FILE* fptr = fopen(filename, "r");
         if (fptr != NULL) {
             // Get file size
             fseek(fptr, 0, SEEK_END);
             long file_size = ftell(fptr);
             fseek(fptr, 0, SEEK_SET);
-            
+
             // Allocate buffer and read
             json_response = malloc(file_size + 1);
             if (json_response != NULL) {
@@ -128,38 +120,38 @@ char* WeatherRequestHandler_HandleWeatherRequest(const char* _Url)
             }
             fclose(fptr);
         }
-        
+
         if (json_response == NULL) {
             printf("Failed to read cache, fetching new data\n");
             cache_status = DOES_NOT_EXIST; // Force fetch
         }
     }
-    
+
     if (cache_status != UP_TO_DATE) {
         // Fetch new data
         printf("Fetching new weather data for: %s, %s\n",
-               weather_data->latitude, weather_data->longitude);
-        
-        if (HTTPClient_GetWeatherData(weather_data) != 0) {
+               _WeatherData->latitude, _WeatherData->longitude);
+
+        if (HTTPClient_GetWeatherData(_WeatherData) != 0) {
             printf("Failed to fetch weather data\n");
-            WeatherData_FreeWeatherData(weather_data);
+            WeatherData_FreeWeatherData(_WeatherData);
             return NULL;
         }
-        
+
         // Convert to JSON
-        json_response = WeatherData_WeatherToJson(weather_data);
-        
+        json_response = WeatherData_WeatherToJson(_WeatherData);
+
+        // Save to cache
         if (json_response != NULL) {
-            // Save to cache
-            if (Cache_SaveData(&allData, "weather") != 0) {
-                printf("Warning: Failed to save to cache\n");
+            if (Cache_SaveWeatherDataJson(_WeatherData->latitude, _WeatherData->longitude, json_response) != 0) {
+                printf("Warning: Failed to save weather data to cache\n");
             }
         }
     }
-    
+
     // Free weather data
-    WeatherData_FreeWeatherData(weather_data);
-    
+    WeatherData_FreeWeatherData(_WeatherData);
+
     return json_response;
 }
 
@@ -210,6 +202,6 @@ int WeatherRequestHandler_ParseHTTPRequest(const char* _RequestLine, HTTPRequest
     if (token) {
         strncpy(_ParsedRequest->version, token, sizeof(_ParsedRequest->version) - 1);
     }
-    
-    
+
     return 0; // Success
+}

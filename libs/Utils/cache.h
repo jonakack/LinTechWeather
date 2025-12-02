@@ -7,15 +7,20 @@
 #define UP_TO_DATE 0
 #define OUT_OF_DATE -1
 #define DOES_NOT_EXIST -2
-#define IS_WEATHERDATA -5
-#define IS_GEODATA -6
 
-// Checks if file exists, -6 for GeoData, -5 for WeatherData
-int Cache_CheckExisting(AllData *_City, int DataType);
-int Cache_SaveData(AllData *_Data, char *_Type);
-char* Cache_ReadData(AllData *_Data, int DataType);
+// Check if geo data exists in cache and is up to date
+int Cache_CheckExistingGeoData(GeoData *_Data);
 
+// Check if weather data exists in cache and is up to date
+int Cache_CheckExistingWeatherData(WeatherData *_Data);
 
+// Save geo data to cache (takes raw JSON string)
+int Cache_SaveGeoDataJson(const char *_City, const char *_JsonData);
+
+// Save weather data to cache (takes raw JSON string)
+int Cache_SaveWeatherDataJson(const char *_Latitude, const char *_Longitude, const char *_JsonData);
+
+// Helper functions
 int Cache_CheckDataAge(char *_Filename);
 int Cache_CheckDataTime(char *_Filename);
 
