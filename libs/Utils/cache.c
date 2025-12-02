@@ -5,11 +5,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <dirent.h> // Set compiler path as C:/msys64/ucrt64/bin/gcc.exe on windows
 #include "cache.h"
-#include "cJSON.h"
 
-// Macro to make mkdir work on Windows and Linux
 #ifdef _WIN32
 #include <direct.h>
 #define MKDIR(path) _mkdir(path)
@@ -18,376 +15,169 @@
 #define MKDIR(path) mkdir(path, 0777)
 #endif
 
-int Cache_CheckExistingGeoData(GeoData *_Data)
+static int Cache_MkdirRecursive(const char* _Path)
 {
-    if (_Data == NULL || _Data->city == NULL)
+    char tmp[512];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", _Path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = 0;
+
+    for (p = tmp + 1; *p; p++)
     {
-        printf("Invalid GeoData\n");
-        return ERROR;
-    }
-
-    char folder[100];
-    char target_filename[100];
-    char full_path[200];
-
-    snprintf(folder, sizeof(folder), "./libs/WeatherServer/cache/geodata");
-    sprintf(target_filename, "%s.json", _Data->city);
-    sprintf(full_path, "%s/%s", folder, target_filename);
-
-    DIR *dir = opendir(folder);
-    if (dir == NULL)
-    {
-        printf("Could not open folder %s\n", folder);
-        return DOES_NOT_EXIST;
-    }
-
-    // Loop through all files in the directory
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
-        if (strcmp(entry->d_name, target_filename) == 0)
+        if (*p == '/')
         {
-            closedir(dir);
-            int cache_status = Cache_CheckDataAge(full_path);
-            if (cache_status == OUT_OF_DATE)
+            *p = 0;
+            if (MKDIR(tmp) != 0 && errno != EEXIST)
             {
-                printf("File is outdated\n");
-                return OUT_OF_DATE;
+                return ERROR;
             }
-            else if (cache_status == UP_TO_DATE)
-            {
-                printf("File is up to date\n");
-                return UP_TO_DATE;
-            }
+            *p = '/';
         }
     }
-    closedir(dir);
-    printf("File does not exist\n");
-    return DOES_NOT_EXIST;
-}
 
-int Cache_CheckExistingWeatherData(WeatherData *_Data)
-{
-    if (_Data == NULL || _Data->latitude == NULL || _Data->longitude == NULL)
+    if (MKDIR(tmp) != 0 && errno != EEXIST)
     {
-        printf("Invalid WeatherData\n");
         return ERROR;
     }
 
-    char folder[100];
-    char target_filename[100];
-    char full_path[200];
-
-    snprintf(folder, sizeof(folder), "./libs/WeatherServer/cache/weatherdata");
-    sprintf(target_filename, "%s_%s.json", _Data->latitude, _Data->longitude);
-    sprintf(full_path, "%s/%s", folder, target_filename);
-
-    DIR *dir = opendir(folder);
-    if (dir == NULL)
-    {
-        printf("Could not open folder %s\n", folder);
-        return DOES_NOT_EXIST;
-    }
-
-    // Loop through all files in the directory
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
-        if (strcmp(entry->d_name, target_filename) == 0)
-        {
-            closedir(dir);
-            int cache_status = Cache_CheckDataAge(full_path);
-            if (cache_status == OUT_OF_DATE)
-            {
-                printf("File is outdated\n");
-                return OUT_OF_DATE;
-            }
-            else if (cache_status == UP_TO_DATE)
-            {
-                printf("File is up to date\n");
-                int dataTimeResult = UP_TO_DATE;
-                if ((dataTimeResult = Cache_CheckDataTime(full_path)) == OUT_OF_DATE)
-                {
-                    return OUT_OF_DATE;
-                }
-                return UP_TO_DATE;
-            }
-        }
-    }
-    closedir(dir);
-    printf("File does not exist\n");
-    return DOES_NOT_EXIST;
+    return OK;
 }
 
-int Cache_SaveGeoDataJson(const char *_City, const char *_JsonData)
+void Cache_BuildPath(char* _Buffer, size_t _BufferSize, const char* _CacheKey, const CacheConfig* _Config)
 {
-    if (_City == NULL || _JsonData == NULL)
+    if (_Buffer == NULL || _CacheKey == NULL || _Config == NULL)
     {
-        printf("Error: Invalid parameters for Cache_SaveGeoDataJson\n");
+        return;
+    }
+    snprintf(_Buffer, _BufferSize, "%s/%s.json", _Config->base_path, _CacheKey);
+}
+
+int Cache_Check(const char* _CacheKey, const CacheConfig* _Config)
+{
+    if (_CacheKey == NULL || _Config == NULL)
+    {
+        printf("Invalid parameters for Cache_Check\n");
         return ERROR;
     }
 
-    FILE *fptr = NULL;
-    char filename[256];
-    int result = -3;
+    char full_path[512];
+    Cache_BuildPath(full_path, sizeof(full_path), _CacheKey, _Config);
 
-    // Create cache directory structure
-    if (MKDIR("./libs/WeatherServer/cache") != 0 && errno != EEXIST)
-    {
-        perror("Failed to create cache directory");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    // Create geodata directory
-    if (MKDIR("./libs/WeatherServer/cache/geodata") != 0 && errno != EEXIST)
-    {
-        perror("Failed to create geodata directory");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    // Create filename
-    sprintf(filename, "./libs/WeatherServer/cache/geodata/%s.json", _City);
-
-    // Write to file
-    if ((fptr = fopen(filename, "w")) == NULL)
-    {
-        perror("Failed to open file for geo data");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    size_t json_len = strlen(_JsonData);
-    size_t written = fwrite(_JsonData, 1, json_len, fptr);
-    if (written != json_len)
-    {
-        perror("Failed to write complete JSON to file");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    if (fclose(fptr) != OK)
-    {
-        perror("Failed to close file");
-        result = ERROR;
-        goto cleanup;
-    }
-    fptr = NULL;
-    result = OK; // Success
-    printf("Successfully saved geo data cache for %s\n", _City);
-
-cleanup:
-    if (fptr != NULL)
-    {
-        fclose(fptr);
-    }
-    return result;
-}
-
-int Cache_SaveWeatherDataJson(const char *_Latitude, const char *_Longitude, const char *_JsonData)
-{
-    if (_Latitude == NULL || _Longitude == NULL || _JsonData == NULL)
-    {
-        printf("Error: Invalid parameters for Cache_SaveWeatherDataJson\n");
-        return ERROR;
-    }
-
-    FILE *fptr = NULL;
-    char filename[256];
-    int result = -3;
-
-    // Create cache directory structure
-    if (MKDIR("./libs/WeatherServer/cache") != 0 && errno != EEXIST)
-    {
-        perror("Failed to create cache directory");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    // Create weatherdata directory
-    if (MKDIR("./libs/WeatherServer/cache/weatherdata") != 0 && errno != EEXIST)
-    {
-        perror("Failed to create weatherdata directory");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    // Create filename
-    sprintf(filename, "./libs/WeatherServer/cache/weatherdata/%s_%s.json", _Latitude, _Longitude);
-
-    // Write to file
-    if ((fptr = fopen(filename, "w")) == NULL)
-    {
-        perror("Failed to open file for weather data");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    size_t json_len = strlen(_JsonData);
-    size_t written = fwrite(_JsonData, 1, json_len, fptr);
-    if (written != json_len)
-    {
-        perror("Failed to write complete JSON to file");
-        result = ERROR;
-        goto cleanup;
-    }
-
-    if (fclose(fptr) != OK)
-    {
-        perror("Failed to close file");
-        result = ERROR;
-        goto cleanup;
-    }
-    fptr = NULL;
-    result = OK; // Success
-    printf("Successfully saved weather data cache for %s, %s\n", _Latitude, _Longitude);
-
-cleanup:
-    if (fptr != NULL)
-    {
-        fclose(fptr);
-    }
-    return result;
-}
-
-int Cache_CheckDataAge(char *_Filename)
-{
     struct stat fileStatus;
 
-    // Check if file exists
-    if (stat(_Filename, &fileStatus) != OK)
+    if (stat(full_path, &fileStatus) != OK)
     {
         if (errno == ENOENT)
         {
+            printf("Cache file does not exist: %s\n", full_path);
             return DOES_NOT_EXIST;
         }
-        else
-            return ERROR;
+        return ERROR;
     }
-    printf("File exists\n");
 
     time_t mod_time = fileStatus.st_mtime;
     time_t current_time = time(NULL);
 
-    if ((current_time - mod_time) > 900) // Checks if file is older than 15 minutes
+    if ((current_time - mod_time) > _Config->ttl_seconds)
     {
+        printf("Cache file is outdated: %s\n", full_path);
         return OUT_OF_DATE;
     }
+
+    printf("Cache file is up to date: %s\n", full_path);
     return UP_TO_DATE;
 }
 
-/*  This function checks the API time inside of a JSON file. Needs full path.
-    Returns -1 if outdated, 0 if up to date */
-int Cache_CheckDataTime(char *_Filename)
+int Cache_Save(const char* _CacheKey, const char* _Data, const CacheConfig* _Config)
 {
-    FILE *fptr;
-
-    // Open file
-    fptr = fopen(_Filename, "r");
-    if (fptr == NULL)
+    if (_CacheKey == NULL || _Data == NULL || _Config == NULL)
     {
-        printf("Failed to open file\n");
+        printf("Error: Invalid parameters for Cache_Save\n");
         return ERROR;
     }
 
-    // Copy content in file
+    FILE *fptr = NULL;
+    char full_path[512];
+
+    // Dubbelkolla att katalogen finns
+    if (Cache_MkdirRecursive(_Config->base_path) != OK) 
+    {
+        perror("Failed to create cache directory");
+        return ERROR;
+    }
+    // Bygg fullständig sökväg för cache-filen
+    Cache_BuildPath(full_path, sizeof(full_path), _CacheKey, _Config);
+
+    if ((fptr = fopen(full_path, "w")) == NULL)
+    {
+        perror("Failed to open file for writing");
+        return ERROR;
+    }
+
+    size_t data_len = strlen(_Data);
+    size_t written = fwrite(_Data, 1, data_len, fptr);
+    if (written != data_len)
+    {
+        perror("Failed to write complete data to file");
+        fclose(fptr);
+        return ERROR;
+    }
+
+    if (fclose(fptr) != OK)
+    {
+        perror("Failed to close file");
+        return ERROR;
+    }
+
+    printf("Successfully saved cache: %s\n", full_path);
+    return OK;
+}
+
+char* Cache_Load(const char* _CacheKey, const CacheConfig* _Config)
+{
+    if (_CacheKey == NULL || _Config == NULL)
+    {
+        printf("Invalid parameters for Cache_Load\n");
+        return NULL;
+    }
+
+    char full_path[512];
+    Cache_BuildPath(full_path, sizeof(full_path), _CacheKey, _Config);
+
+    FILE* fptr = fopen(full_path, "r");
+    if (fptr == NULL)
+    {
+        printf("Failed to open cache file: %s\n", full_path);
+        return NULL;
+    }
+
     fseek(fptr, 0, SEEK_END);
     long file_size = ftell(fptr);
     fseek(fptr, 0, SEEK_SET);
 
-    char *content = malloc(file_size + 1);
-    if (content == NULL)
+    char* data = malloc(file_size + 1);
+    if (data == NULL)
     {
-        printf("Failed to allocate memory\n");
-        return ERROR;
+        printf("Failed to allocate memory for cache data\n");
+        fclose(fptr);
+        return NULL;
     }
 
-    fread(content, 1, file_size, fptr);
-    content[file_size] = '\0';
-
+    size_t read_size = fread(data, 1, file_size, fptr);
+    data[file_size] = '\0';
     fclose(fptr);
 
-    // Find "time":	e.g "2025-10-07T07:00"
-    cJSON *json = cJSON_Parse(content);
-    if (json == NULL)
+    if (read_size != file_size)
     {
-        printf("Failed to parse cJSON\n");
-        return ERROR;
+        printf("Failed to read complete cache file\n");
+        free(data);
+        return NULL;
     }
 
-    cJSON *current_weather = cJSON_GetObjectItem(json, "current_weather");
-    if (current_weather == NULL)
-    {
-        printf("Failed to get current_weather\n");
-        cJSON_Delete(json);
-        return ERROR;
-    }
-
-    cJSON *json_time = cJSON_GetObjectItem(current_weather, "time");
-    if (json_time == NULL || !cJSON_IsString(json_time))
-    {
-        printf("Failed to get time or time is not a string\n");
-        cJSON_Delete(json);
-        free(content);
-        return ERROR;
-    }
-
-    char *time_jsonString = json_time->valuestring;
-    printf("File's API time: %s\n", time_jsonString);
-    // time_jsonString now contains time in the file in YYYY-MM-DDTHH:MM format
-
-    char buffer[20];
-    time_t current_time = time(NULL);
-    struct tm *gmt = gmtime(&current_time);
-    strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M", gmt);
-    printf("Current time: %s\n", buffer);
-    // Buffer now contains current GMT time in YYYY-MM-DDTHH:MM format
-
-    // Compare with current time and date
-    struct tm file;
-    struct tm current;
-
-    sscanf(time_jsonString, "%d-%d-%dT%d:%d",
-           &file.tm_year,
-           &file.tm_mon,
-           &file.tm_mday,
-           &file.tm_hour,
-           &file.tm_min);
-
-    sscanf(buffer, "%d-%d-%dT%d:%d",
-           &current.tm_year,
-           &current.tm_mon,
-           &current.tm_mday,
-           &current.tm_hour,
-           &current.tm_min);
-
-    file.tm_year -= 1900;
-    file.tm_mon -= 1;
-    file.tm_sec = 0;
-    file.tm_isdst = -1;
-
-    current.tm_year -= 1900;
-    current.tm_mon -= 1;
-    current.tm_sec = 0;
-    current.tm_isdst = -1;
-
-    // This will make intervals 0, 1, 2 or 3
-    int file_interval = file.tm_min / 15;
-    int current_interval = current.tm_min / 15;
-
-    if (file.tm_mday != current.tm_mday ||
-        file.tm_hour != current.tm_hour ||
-        file_interval != current_interval)
-    {
-        free(content);
-        cJSON_Delete(json);
-        printf("API is outdated\n");
-        return OUT_OF_DATE; // If interval in file is older than current, a new version is available online
-    }
-
-    free(content);
-    cJSON_Delete(json);
-    printf("API is up to date\n");
-    return UP_TO_DATE; // Do nothing if they're the same interval
+    printf("Successfully loaded cache: %s\n", full_path);
+    return data;
 }
