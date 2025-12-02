@@ -1,12 +1,51 @@
-#include "WeatherRequestHandler.h"
-#include "WeatherData.h"
-#include "HTTPClient.h"
-#include "cache.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include "WeatherRequest.h"
 
-char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
+RouteResult WeatherRequest_HandleRequest(HTTPServerConnection* _Connection)
+{
+    if (_Connection == NULL || _Connection->url == NULL) {
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    const char* url = _Connection->url;
+    char* json_response = NULL;
+
+    // Route to appropriate handler based on URL path
+    if (compare_url(url, "/api/v1/geo")) {
+        json_response = WeatherRequest_HandleGeoRequest(url);
+    }
+    else if (compare_url(url, "/api/v1/weather")) {
+        json_response = WeatherRequest_HandleWeatherRequest(url);
+    }
+    else {
+        // Unknown endpoint
+        HTTPResponse_SendError(&_Connection->tcpClient,
+                              HTTP_STATUS_404_NOT_FOUND,
+                              "Endpoint not found");
+        return ROUTE_NOT_FOUND;
+    }
+
+    // Check if we got a valid JSON response
+    if (json_response == NULL) {
+        HTTPResponse_SendError(&_Connection->tcpClient,
+                              HTTP_STATUS_400_BAD_REQUEST,
+                              "Invalid request parameters");
+        return ROUTE_BAD_REQUEST;
+    }
+
+    // Send successful JSON response
+    int send_result = HTTPResponse_SendJson(&_Connection->tcpClient, json_response);
+
+    // Free JSON response
+    free(json_response);
+
+    if (send_result < 0) {
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    return ROUTE_SUCCESS;
+}
+
+char* WeatherRequest_HandleGeoRequest(const char* _Url)
 {
     if (_Url == NULL) 
     {
@@ -14,7 +53,7 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
     }
 
     // Parse geo request from URL
-    GeoData* _GeoData = WeatherData_ParseGeoRequest(_Url);
+    WeatherData* _GeoData = WeatherData_ParseRequest(_Url);
     if (_GeoData == NULL) 
     {
         return NULL;
@@ -30,9 +69,10 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
     };
 
     int cache_status = Cache_Check(_GeoData->city, &geo_cache);
-
-    if (cache_status == UP_TO_DATE) 
+    // Always use cached data, since this doesn't need to be renewed.
+    if (cache_status != DOES_NOT_EXIST) 
     {
+        // Convert to JSON from cached file
         json_response = Cache_Load(_GeoData->city, &geo_cache);
         if (json_response == NULL) 
         {
@@ -41,7 +81,7 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
         }
     }
 
-    if (cache_status != UP_TO_DATE) 
+    if (cache_status == DOES_NOT_EXIST) 
     {
         // Fetch new data
         printf("Fetching new geo data for: %s\n", _GeoData->city);
@@ -49,12 +89,11 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
         if (HTTPClient_GetGeoData(_GeoData) != 0) 
         {
             printf("Failed to fetch geo data\n");
-            WeatherData_FreeGeoData(_GeoData);
+            WeatherData_Dispose(_GeoData);
             return NULL;
         }
-
-        // Convert to JSON
-        json_response = WeatherData_GeoToJson(_GeoData);
+        // Convert to JSON from get request
+        json_response = WeatherData_HttpResponseToJson(_GeoData->response);
 
         if (json_response != NULL) 
         {
@@ -64,18 +103,18 @@ char* WeatherRequestHandler_HandleGeoRequest(const char* _Url)
         }
     }
 
-    WeatherData_FreeGeoData(_GeoData);
+    WeatherData_Dispose(_GeoData);
     return json_response;
 }
 
-char* WeatherRequestHandler_HandleWeatherRequest(const char* _Url)
+char* WeatherRequest_HandleWeatherRequest(const char* _Url)
 {
     if (_Url == NULL) 
     {
         return NULL;
     }
 
-    WeatherData* _WeatherData = WeatherData_ParseWeatherRequest(_Url);
+    WeatherData* _WeatherData = WeatherData_ParseRequest(_Url);
     if (_WeatherData == NULL) 
     {
         return NULL;
@@ -116,12 +155,12 @@ char* WeatherRequestHandler_HandleWeatherRequest(const char* _Url)
         if (HTTPClient_GetWeatherData(_WeatherData) != 0) 
         {
             printf("Failed to fetch weather data\n");
-            WeatherData_FreeWeatherData(_WeatherData);
+            WeatherData_Dispose(_WeatherData);
             return NULL;
         }
 
         // Convert to JSON
-        json_response = WeatherData_WeatherToJson(_WeatherData);
+        json_response = WeatherData_HttpResponseToJson(_WeatherData->response);
 
         // Save to cache using generic API
         if (json_response != NULL) 
@@ -133,12 +172,12 @@ char* WeatherRequestHandler_HandleWeatherRequest(const char* _Url)
     }
 
     // Free weather data
-    WeatherData_FreeWeatherData(_WeatherData);
+    WeatherData_Dispose(_WeatherData);
 
     return json_response;
 }
 
-int WeatherRequestHandler_ParseHTTPRequest(const char* _RequestLine, HTTPRequest* _ParsedRequest)
+int WeatherRequest_ParseHTTPRequest(const char* _RequestLine, HTTPRequest* _ParsedRequest)
 {
     if (!_RequestLine || !_ParsedRequest) 
     {

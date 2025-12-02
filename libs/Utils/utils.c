@@ -1,12 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <string.h>
 #include "utils.h"
-#include <ctype.h>
-#include <stdbool.h>
+
 
 uint64_t SystemMonotonicMS(void)
 {
@@ -160,4 +155,22 @@ char *url_decode(const char *src)
     decoded[j] = '\0';
 
     return decoded;
+}
+// Check if URL matches a specific path
+int compare_url(const char* _Url, const char* _Path)
+{
+    if (_Url == NULL || _Path == NULL) {
+        return 0;
+    }
+
+    size_t path_len = strlen(_Path);
+
+    // URL must start with path
+    if (strncmp(_Url, _Path, path_len) != 0) {
+        return 0;
+    }
+
+    // After path must be end of string, '?' or other separator
+    char next_char = _Url[path_len];
+    return (next_char == '\0' || next_char == '?' || next_char == '#');
 }

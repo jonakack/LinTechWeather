@@ -1,9 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stddef.h>
 #include "WeatherServerInstance.h"
-#include "WeatherRequestRouter.h"
 
 //-----------------Internal Functions-----------------
 
@@ -46,8 +41,7 @@ int WeatherServerInstance_OnRequest(void* _Context)
 {
     WeatherServerInstance* _Instance = (WeatherServerInstance*)_Context;
     HTTPServerConnection* _Connection = _Instance->connection;
-    WeatherRequestRouter_HandleRequest(_Connection);
-	// TODO: C++ VERSION HERE?
+    WeatherRequest_HandleRequest(_Connection);
     return 0;
 }
 

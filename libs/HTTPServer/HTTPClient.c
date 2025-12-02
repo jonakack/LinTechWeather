@@ -16,7 +16,7 @@
 
 // Gets a GeoData struct, assembles GET request and sends it to HTTPClient_Get
 // When done, it fills the data structure with JSON data from external API
-int HTTPClient_GetGeoData(GeoData *_Data)
+int HTTPClient_GetGeoData(WeatherData *_Data)
 {
     if (_Data == NULL || _Data->city == NULL)
     {

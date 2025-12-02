@@ -5,79 +5,63 @@
 #include "WeatherData.h"
 #include "utils.h"
 
-
-GeoData *WeatherData_ParseGeoRequest(const char *_Url)
+WeatherData *WeatherData_ParseRequest(const char *_Url)
 {
-    
-    // Allocate GeoData structure
-    GeoData *data = (GeoData *)calloc(1, sizeof(GeoData));
-    if (!data)
-        return NULL;
 
-    // Get city parameter
-    char *city_raw = get_query_param(_Url, "city");
-    if (!city_raw)
-    {
-        WeatherData_FreeGeoData(data);
-        return NULL;
-    }
-
-    // URL-decode
-    data->city = url_decode(city_raw);
-    free(city_raw);
-
-    if (!data->city)
-    {
-        WeatherData_FreeGeoData(data);
-        return NULL;
-    }
-
-    // VALIDERA city name
-    if (!validate_city_name(data->city))
-    {
-        printf("Invalid city name: %s\n", data->city);
-        WeatherData_FreeGeoData(data);
-        return NULL;
-    }
-
-    return data;
-
-}
-
-WeatherData *WeatherData_ParseWeatherRequest(const char *_Url)
-{
-    
-    // Allocate WeatherData structure
+    // Allocate Data structure
     WeatherData *data = (WeatherData *)calloc(1, sizeof(WeatherData));
     if (!data)
         return NULL;
 
-    // Get lat and lon parameters
+    // Get parameters
+    char *city_raw = get_query_param(_Url, "city");
     data->latitude = get_query_param(_Url, "lat");
     data->longitude = get_query_param(_Url, "lon");
-
-    // VALIDERA latitude
-    if (!data->latitude || !validate_latitude(data->latitude))
+    // If it's a GeoRequest
+    if (city_raw)
     {
-        printf("Invalid latitude: %s\n", data->latitude ? data->latitude : "NULL");
-        WeatherData_FreeWeatherData(data);
-        return NULL;
-    }
+        // URL-decode
+        data->city = url_decode(city_raw);
+        free(city_raw);
 
-    // VALIDERA longitude
-    if (!data->longitude || !validate_longitude(data->longitude))
+        if (!data->city)
+        {
+            WeatherData_Dispose(data);
+            return NULL;
+        }
+        // VALIDERA city name
+        if (!validate_city_name(data->city))
+        {
+            printf("Invalid city name: %s\n", data->city);
+            WeatherData_Dispose(data);
+            return NULL;
+        }
+        return data;
+    }
+    // If it's a WeatherRequest
+    if (data->latitude && data->longitude) 
     {
-        printf("Invalid longitude: %s\n", data->longitude ? data->longitude : "NULL");
-        WeatherData_FreeWeatherData(data);
-        return NULL;
+        // VALIDERA latitude
+        if (!data->latitude || !validate_latitude(data->latitude))
+        {
+            printf("Invalid latitude: %s\n", data->latitude ? data->latitude : "NULL");
+            WeatherData_Dispose(data);
+            return NULL;
+        }
+        // VALIDERA longitude
+        if (!data->longitude || !validate_longitude(data->longitude))
+        {
+            printf("Invalid longitude: %s\n", data->longitude ? data->longitude : "NULL");
+            WeatherData_Dispose(data);
+            return NULL;
+        }
+        return data;
     }
-
-    return data;
-
+    else return NULL;
 }
 
 // Shared function to parse HTTP response to clean JSON
-static char *WeatherData_HttpResponseToJson(const char *response)
+char *WeatherData_HttpResponseToJson(const char *response)
 {
     if (!response)
         return NULL;
@@ -172,23 +156,7 @@ static char *WeatherData_HttpResponseToJson(const char *response)
     return json;
 }
 
-char *WeatherData_GeoToJson(const GeoData *_Data)
-{
-    if (!_Data || !_Data->response)
-        return NULL;
-
-    return WeatherData_HttpResponseToJson(_Data->response);
-}
-
-char *WeatherData_WeatherToJson(const WeatherData *_Data)
-{
-    if (!_Data || !_Data->response)
-        return NULL;
-
-    return WeatherData_HttpResponseToJson(_Data->response);
-}
-
-void WeatherData_FreeGeoData(GeoData *_Data)
+void WeatherData_Dispose(WeatherData *_Data)
 {
     if (!_Data)
         return;
@@ -196,18 +164,6 @@ void WeatherData_FreeGeoData(GeoData *_Data)
     // Free all variables in struct
     if (_Data->city)
         free(_Data->city);
-    if (_Data->response)
-        free(_Data->response);
-
-    free(_Data);
-}
-
-void WeatherData_FreeWeatherData(WeatherData *_Data)
-{
-    if (!_Data)
-        return;
-
-    // Free all variables in struct
     if (_Data->latitude)
         free(_Data->latitude);
     if (_Data->longitude)

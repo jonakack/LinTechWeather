@@ -1,19 +1,6 @@
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <time.h>
-#include "cache.h"
 
-#ifdef _WIN32
-#include <direct.h>
-#define MKDIR(path) _mkdir(path)
-#else
-#include <sys/stat.h>
-#define MKDIR(path) mkdir(path, 0777)
-#endif
+#include "cache.h"
 
 static int Cache_MkdirRecursive(const char* _Path)
 {
