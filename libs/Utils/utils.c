@@ -114,7 +114,7 @@ bool validate_city_name(const char *city)
     return true;
 }
 
-// URL-decode funktion (för percent-encoding)
+// URL-decode function (for percent-encoding)
 char *url_decode(const char *src)
 {
     if (!src)
@@ -130,7 +130,7 @@ char *url_decode(const char *src)
     {
         if (src[i] == '%' && i + 2 < src_len)
         {
-            // Konvertera hex till tecken
+            // Convert hex to character
             int hex_val;
             if (sscanf(src + i + 1, "%2x", &hex_val) == 1)
             {

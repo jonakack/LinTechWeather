@@ -14,7 +14,7 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 {
 	TCPClient_Initiate(&_Connection->tcpClient, _FD);
 
-	// Initiera alla fält
+	// Initialize all fields
 	_Connection->method = NULL;
 	_Connection->url = NULL;
 	_Connection->requestString = NULL;
@@ -62,14 +62,14 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 
 	HTTPServerConnection* _Connection = (HTTPServerConnection*)_Context;
 
-	// Om vi redan har processat requesten, gör inget mer
+	// If we have already processed the request, do nothing more
 	if (_Connection->requestReceived)
 		return;
 
 	char buffer[4096];
 	int bytesRead = TCPClient_Read(&_Connection->tcpClient, (uint8_t*)buffer, sizeof(buffer) - 1);
 	
-	// EAGAIN/EWOULDBLOCK = ingen data tillgänglig ännu
+	// EAGAIN/EWOULDBLOCK = no data available yet
 	if (bytesRead == -1)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -79,7 +79,7 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		return;
 	}
 	
-	// Connection stängd. todo = dispose
+	// Connection closed. todo = dispose
 	if (bytesRead == 0)
 	{
 		return;
@@ -88,10 +88,10 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 	// Null-terminera buffern
 	buffer[bytesRead] = '\0';
 
-	// Kolla om vi har hela HTTP meddelandet (slutar med \r\n\r\n)
+	// Check if we have the complete HTTP message (ends with \r\n\r\n)
 	if (strstr(buffer, "\r\n\r\n") == NULL)
 	{
-		// Inkomplett request, vänta på mer data
+		// Incomplete request, wait for more data
 		return;
 	}
 
@@ -103,13 +103,13 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		strcpy(_Connection->raw_request, buffer);
 	}
 	
-	// Parsa första raden: "GET /index.html HTTP/1.1"
+	// Parse first line: "GET /index.html HTTP/1.1"
 	char method[16] = {0};
 	char url[512] = {0};
 
 	if (sscanf(buffer, "%15s %511s", method, url) == 2)
 	{
-		// Allokera och spara method
+		// Allocate and save method
 		size_t method_len = strlen(method);
 		_Connection->method = (char*)malloc(method_len + 1);
 		if (_Connection->method != NULL)
@@ -119,7 +119,7 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 			_Connection->method[method_len] = '\0';
 		}
 
-		// Allokera och spara url
+		// Allocate and save url
 		size_t url_len = strlen(url);
 		_Connection->url = (char*)malloc(url_len + 1);
 		if (_Connection->url != NULL)
@@ -129,32 +129,32 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 			_Connection->url[url_len] = '\0';
 		}
 
-		// Läs in alla headers (men ignorera dem för tillfället)
+		// Read all headers (but ignore them for now)
 		char* header_start = strstr(buffer, "\r\n");
 		if (header_start != NULL)
 		{
-			header_start += 2; // Hoppa över första \r\n
+			header_start += 2; // Skip first \r\n
 			
-			// Loopa igenom alla headers tills vi hittar \r\n\r\n
+			// Loop through all headers until we find \r\n\r\n
 			while (header_start != NULL && strncmp(header_start, "\r\n", 2) != 0)
 			{
 				char* header_end = strstr(header_start, "\r\n");
 				if (header_end == NULL)
 					break;
 				
-				// Här har vi en header-rad mellan header_start och header_end
-				// Vi ignorerar den för tillfället
+				// Here we have a header line between header_start and header_end
+				// We ignore it for now
 				
 				header_start = header_end + 2;
 			}
 		}
 		
-		// Markera att vi har fått requesten
+		// Mark that we have received the request
 		_Connection->requestReceived = 1;
 
 		// HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY - disabled for production
 
-		// Om det är en HTTP GET, anropa callback
+		// If it is an HTTP GET, call callback
 		if (strcmp(_Connection->method, "GET") == 0)
 		{
 			if (_Connection->onRequest != NULL)
@@ -170,7 +170,7 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 
 void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 {
-	// Frigör allokerat minne
+	// Free allocated memory
 	if(_Connection->method != NULL)
 	{
 		free(_Connection->method);

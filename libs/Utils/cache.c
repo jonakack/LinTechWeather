@@ -96,7 +96,7 @@ int Cache_Save(const char* _CacheKey, const char* _Data, const CacheConfig* _Con
         perror("Failed to create cache directory");
         return ERROR;
     }
-    // Bygg fullständig sökväg för cache-filen
+    // Build full path for cache file
     Cache_BuildPath(full_path, sizeof(full_path), _CacheKey, _Config);
 
     if ((fptr = fopen(full_path, "w")) == NULL)
