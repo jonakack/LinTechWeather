@@ -19,15 +19,15 @@ typedef struct TCPClient
 
 } TCPClient;
 
-int TCPClient_Initiate(TCPClient* c, int _FD);
+int TCPClient_Initiate(TCPClient* _Client, int _FD);
 
-int TCPClient_Connect(TCPClient* c, const char* host, const char* port);
+int TCPClient_Connect(TCPClient* _Client, const char* _Host, const char* _Port);
 
-int TCPClient_Write(TCPClient* c, const uint8_t* buf, int len);
-int TCPClient_Read(TCPClient* c, uint8_t* buf, int len);
+int TCPClient_Write(TCPClient* _Client, const uint8_t* _Buffer, int _Length);
+int TCPClient_Read(TCPClient* _Client, uint8_t* _Buffer, int _Length);
 
-void TCPClient_Disconnect(TCPClient* c);
+void TCPClient_Disconnect(TCPClient* _Client);
 
-void TCPClient_Dispose(TCPClient* c);
+void TCPClient_Dispose(TCPClient* _Client);
 
 #endif // __TCPClient_h_

@@ -14,9 +14,11 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 {
 	TCPClient_Initiate(&_Connection->tcpClient, _FD);
 
-	// Initiera alla fält
+	// Initialize all fields
 	_Connection->method = NULL;
 	_Connection->url = NULL;
+	_Connection->requestString = NULL;
+	_Connection->raw_request = NULL;
 	_Connection->context = NULL;
 	_Connection->onRequest = NULL;
 	_Connection->requestReceived = 0;
@@ -60,14 +62,14 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 
 	HTTPServerConnection* _Connection = (HTTPServerConnection*)_Context;
 
-	// Om vi redan har processat requesten, gör inget mer
+	// If we have already processed the request, do nothing more
 	if (_Connection->requestReceived)
 		return;
 
 	char buffer[4096];
 	int bytesRead = TCPClient_Read(&_Connection->tcpClient, (uint8_t*)buffer, sizeof(buffer) - 1);
 	
-	// EAGAIN/EWOULDBLOCK = ingen data tillgänglig ännu
+	// EAGAIN/EWOULDBLOCK = no data available yet
 	if (bytesRead == -1)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -77,7 +79,7 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 		return;
 	}
 	
-	// Connection stängd. todo = dispose
+	// Connection closed. todo = dispose
 	if (bytesRead == 0)
 	{
 		return;
@@ -86,75 +88,89 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 	// Null-terminera buffern
 	buffer[bytesRead] = '\0';
 
-	// Kolla om vi har hela HTTP meddelandet (slutar med \r\n\r\n)
+	// Check if we have the complete HTTP message (ends with \r\n\r\n)
 	if (strstr(buffer, "\r\n\r\n") == NULL)
 	{
-		// Inkomplett request, vänta på mer data
+		// Incomplete request, wait for more data
 		return;
 	}
+
+	// Store the full raw request
+	size_t buffer_len = strlen(buffer);
+	_Connection->raw_request = (char*)malloc(buffer_len + 1);
+	if (_Connection->raw_request != NULL)
+	{
+		strcpy(_Connection->raw_request, buffer);
+	}
 	
-	// Parsa första raden: "GET /index.html HTTP/1.1"
+	// Parse first line: "GET /index.html HTTP/1.1"
 	char method[16] = {0};
 	char url[512] = {0};
 
 	if (sscanf(buffer, "%15s %511s", method, url) == 2)
 	{
-		// Allokera och spara method
+		// Allocate and save method
 		size_t method_len = strlen(method);
 		_Connection->method = (char*)malloc(method_len + 1);
 		if (_Connection->method != NULL)
 		{
-			strcpy(_Connection->method, method);
+			// strcpy(_Connection->method, method);
+			strncpy(_Connection->method, method, method_len);
+			_Connection->method[method_len] = '\0';
 		}
-		
-		// Allokera och spara url
+
+		// Allocate and save url
 		size_t url_len = strlen(url);
 		_Connection->url = (char*)malloc(url_len + 1);
 		if (_Connection->url != NULL)
 		{
-			strcpy(_Connection->url, url);
+			// strcpy(_Connection->url, url);
+			strncpy(_Connection->url, url, url_len);
+			_Connection->url[url_len] = '\0';
 		}
 
-		// Läs in alla headers (men ignorera dem för tillfället)
+		// Read all headers (but ignore them for now)
 		char* header_start = strstr(buffer, "\r\n");
 		if (header_start != NULL)
 		{
-			header_start += 2; // Hoppa över första \r\n
+			header_start += 2; // Skip first \r\n
 			
-			// Loopa igenom alla headers tills vi hittar \r\n\r\n
+			// Loop through all headers until we find \r\n\r\n
 			while (header_start != NULL && strncmp(header_start, "\r\n", 2) != 0)
 			{
 				char* header_end = strstr(header_start, "\r\n");
 				if (header_end == NULL)
 					break;
 				
-				// Här har vi en header-rad mellan header_start och header_end
-				// Vi ignorerar den för tillfället
+				// Here we have a header line between header_start and header_end
+				// We ignore it for now
 				
 				header_start = header_end + 2;
 			}
 		}
 		
-		// Markera att vi har fått requesten
+		// Mark that we have received the request
 		_Connection->requestReceived = 1;
-		
-		// Om det är en HTTP GET, anropa callback
+
+		// HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY - disabled for production
+
+		// If it is an HTTP GET, call callback
 		if (strcmp(_Connection->method, "GET") == 0)
 		{
 			if (_Connection->onRequest != NULL)
 			{
 				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
-				HTTPServerConnection_Dispose(_Connection);
 			}
 		}
-		else HTTPServerConnection_Dispose(_Connection);
+
+		HTTPServerConnection_Dispose(_Connection);
     }
 }
 
 
 void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 {
-	// Frigör allokerat minne
+	// Free allocated memory
 	if(_Connection->method != NULL)
 	{
 		free(_Connection->method);
@@ -164,6 +180,16 @@ void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 	{
 		free(_Connection->url);
 		_Connection->url = NULL;
+	}
+	if(_Connection->requestString != NULL)
+	{
+		free(_Connection->requestString);
+		_Connection->requestString = NULL;
+	}
+	if(_Connection->raw_request != NULL)
+	{
+		free(_Connection->raw_request);
+		_Connection->raw_request = NULL;
 	}
 	
 	TCPClient_Dispose(&_Connection->tcpClient);
@@ -178,4 +204,30 @@ void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr)
 	HTTPServerConnection_Dispose(*(_ConnectionPtr));
 	free(*(_ConnectionPtr));
 	*(_ConnectionPtr) = NULL;
+}
+
+void HTTPServerConnection_EchoRequest(HTTPServerConnection* _Connection)
+{
+    char response[8192];  // Increased size for full request
+    
+    // Echo back what we parsed
+    snprintf(response, sizeof(response),
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Method: %s\n"
+        "URL: %s\n"
+        "Request Received: %s\n"
+        "\n--- Full Request with Headers ---\n"
+        "%s"
+        "--- End Request ---\n",
+        _Connection->method ? _Connection->method : "NULL",
+        _Connection->url ? _Connection->url : "NULL", 
+        _Connection->requestReceived ? "YES" : "NO",
+        _Connection->raw_request ? _Connection->raw_request : "No raw request stored"
+    );
+    
+    // Send response back through TCPClient
+    TCPClient_Write(&_Connection->tcpClient, (uint8_t*)response, strlen(response));
 }

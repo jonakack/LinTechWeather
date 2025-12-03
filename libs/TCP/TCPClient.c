@@ -22,14 +22,12 @@ int TCPClient_Connect(TCPClient* _Client, const char *_Host, const char *_Port)
         return -1;
 
 	/*
-	Funktionen getaddrinfo() kan ge en länkad lista av adressförslag för samma värd och port.
-	Till exempel kan en server ha både IPv4- och IPv6-adresser, eller flera nätverkskort.
-
-	Varje nod i listan (struct addrinfo) innehåller en möjlig adress att prova.
-	Om första adressen inte fungerar (t.ex. connect() misslyckas), försöker man nästa.
-	*/
+	The getaddrinfo() function can provide a linked list of address suggestions for the same host and port.
+	For example, a server can have both IPv4 and IPv6 addresses, or multiple network cards.
 	
-    int fd = -1;
+	Each node in the list (struct addrinfo) contains a possible address to try.
+	If the first address doesn't work (e.g. connect() fails), try the next one.
+	*/    int fd = -1;
     for (struct addrinfo *rp = res; rp; rp = rp->ai_next)
 	{
         fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -57,6 +55,7 @@ int TCPClient_Write(TCPClient* _Client, const uint8_t* _Buffer, int _Length)
     return send(_Client->fd, _Buffer, _Length, MSG_NOSIGNAL); // Non-blocking
 }
 
+// Returns number of bytes received
 int TCPClient_Read(TCPClient* _Client, uint8_t* _Buffer, int _Length)
 {
     return recv(_Client->fd, _Buffer, _Length, MSG_DONTWAIT); // Non-blocking

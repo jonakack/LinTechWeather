@@ -14,7 +14,8 @@ CFLAGS_BASE=-Wall -Wno-psabi -Werror \
 	-I libs/HTTPServer \
 	-I libs/TCP \
 	-I libs/Utils \
-	-I libs/WeatherServer
+	-I libs/WeatherServer \
+	-I libs/Utils/cJSON
 
 # Select flags per mode (OPTIMIZE goes into CFLAGS in release; LTO linked only in release)
 ifeq ($(MODE),debug)
@@ -25,6 +26,10 @@ else
   LDFLAGS=
 endif
 
+# Port configuration
+PORT_FLAGS_PRODUCTION=-DHTTP_SERVER_PORT=\"10380\"
+PORT_FLAGS_LOCAL=-DHTTP_SERVER_PORT=\"8080\"
+
 # Directories
 SRC_DIR=.
 BUILD_DIR=build
@@ -34,6 +39,7 @@ SOURCES=$(shell find -L $(SRC_DIR) -type f -name '*.c')
 
 # Per-target object lists - put everything in build/
 SERVER_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SOURCES))
+SERVER_LOCAL_OBJECTS=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/local/%.o,$(SOURCES))
 
 # Executables
 EXECUTABLES=server
@@ -46,14 +52,25 @@ all: $(EXECUTABLES)
 
 # Link rules
 server: $(SERVER_OBJECTS)
-	@echo "Linking $@..."
+	@echo "Linking $@ (production - port 10380)..."
 	@$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
+
+# Local development server (port 8080)
+server-local: $(SERVER_LOCAL_OBJECTS)
+	@echo "Linking $@ (development - port 8080)..."
+	@$(CC) $(LDFLAGS) $^ -o server $(LIBS)
 
 # Compile rules - everything goes in build/
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@echo "Compiling $<..."
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	@$(CC) $(CFLAGS) $(PORT_FLAGS_PRODUCTION) $(INCLUDES) -c $< -o $@
+
+# Compile rules for local development
+$(BUILD_DIR)/local/%.o: $(SRC_DIR)/%.c
+	@echo "Compiling $< (local)..."
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) $(PORT_FLAGS_LOCAL) $(INCLUDES) -c $< -o $@
 
 # Specific file compilation
 FILE=
@@ -65,6 +82,10 @@ compile:
 # Run targets
 run: server
 	@echo "Starting server..."
+	@./server
+
+run-local: server-local
+	@echo "Starting local development server on port 8080..."
 	@./server
 
 # Run server and detach it automatically
@@ -85,4 +106,4 @@ clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR) $(EXECUTABLES)
 
-.PHONY: all clean compile debug-server debug-client run run-tmux kill-server
+.PHONY: all clean compile debug-server debug-client run run-local run-tmux kill-server server-local

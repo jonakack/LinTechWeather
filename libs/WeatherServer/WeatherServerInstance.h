@@ -1,6 +1,11 @@
 #ifndef __WeatherServerInstance_h_
 #define __WeatherServerInstance_h_
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stddef.h>
+#include "WeatherRequest.h"
 #include "smw.h"
 #include "utils.h"
 #include "HTTPServerConnection.h"
@@ -9,6 +14,7 @@
 typedef struct
 {
 	HTTPServerConnection* connection;
+	int completed;
 
 } WeatherServerInstance;
 

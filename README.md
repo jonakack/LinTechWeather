@@ -1,108 +1,144 @@
 # LinTechWeather API
-Under utveckling. 
+Under development.
 
-## Kommande features:
-Felkoder, t.ex om stad inte hittas.
+# Running Server Instructions
 
-Eventuellt en lista på städer om det finns flera städer med samma namn, vi får diskutera den bästa lösningen gemensamt.
+## Quick Start
 
-# Steg för steg-guide:
+### Production Server (Port 10380)
+```bash
+# Start server in current terminal (blocking)
+make run
 
-Kompilera med -DHTTP_SERVER_PORT="XXXX" om ni vill byta port
-
-Ni anropar denna länk och byter ut `<cityname>` mot staden ni vill söka efter:
-
-```
-http://localhost:8080/api/v1/geo?city=<cityname>
+# Or start server in detached tmux session (background)
+make run-tmux
 ```
 
-Servern svarar (om namnet är en giltig stad) med t.ex:
+### Local Development Server (Port 8080)
+```bash
+# Start local development server (current terminal)
+make run-local
+```
+
+## Server Management
+
+### Check if tmux server is running
+```bash
+tmux list-sessions
+```
+
+### Attach to see server output
+```bash
+tmux attach -t weather-server
+```
+
+### Detach from tmux session (server keeps running)
+Press: **Ctrl+B**, then **D**
+
+### Stop the tmux server
+```bash
+make kill-server
+```
+
+## Port Information
+
+| Command | Port | Purpose |
+|---------|------|---------|
+| `make run` / `make run-tmux` | **10380** | Production deployment |
+| `make run-local` | **8080** | Local development |
+
+## Tips
+
+- Use **`make run-local`** for development - easier to access on port 8080
+- Use **`make run-tmux`** for production - server runs in background
+- Use **`make run`** for debugging - see output directly in terminal
+
+# Step-by-step guide:
+
+You call this link and replace `<cityname>` with the city you want to search for:
+
+```
+IF LOCAL: http://localhost:8080/api/v1/geo?city=<cityname>
+
+IF LIVE: http://kontoret.onvo.se:10380/api/v1/geo?city=<cityname>
+```
+
+The server responds (if the name is a valid city) with for example:
 ```json
 { "city":"cityname","country":"country","lat":"latitude","lon":"longitude" }
 ```
 
-Ni anropar nästa länk med dessa koordinater:
+You call the next link with these coordinates:
 
 ```
-http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
+IF LOCAL: http://localhost:8080/api/v1/weather?lat=<latitude>&lon=<longitude>
+
+IF LIVE: http://kontoret.onvo.se:10380/api/v1/weather?lat=<latitude>&lon=<longitude>
 ```
 
-Servern svarar med t.ex:
+The server responds with for example:
 ```json
 { "tempC":"temperature","weather_code":"weathercode","updatedAt":"dateTimeZ" }
 ```
 
-OBS: Utgå från att tiden för tillfället är GMT. Detta kan ändras senare i utvecklingen. 
+NOTE: Assume that the time is currently GMT. This may change later in development. 
 
-## Exempel på svar vid fel:
+## Example of error response:
 ```json
 { "error": { "code": 404, "message": "city not found" } }
 ```
 
-## Anropa server via webbläsaren med en av dessa länkar:
+## Call server via browser with one of these links:
 http://localhost:8080/api/v1/geo?city=Stockholm
 
 http://localhost:8080/api/v1/weather?lat=59.3293&lon=18.0686
 
 http://localhost:8080/invalidpath
 
+http://kontoret.onvo.se:10380/api/v1/geo?city=Stockholm
 
-## Eller via en terminal med detta kommando och curl installerat:
+http://kontoret.onvo.se:10380/api/v1/weather?lat=59.3293&lon=18.0686
+
+
+## Or via terminal with this command and curl installed:
 curl -l '127.0.0.1:8080/api/v1/geo?city=Stockholm'
 
 curl -l '127.0.0.1:8080/api/v1/weather?lat=59.3293&lon=18.0686'
 
 curl -l '127.0.0.1:8080/api/v1/invalidpath'
 
-## Första Endpointen
-### Anropas med t.ex. "/api/v1/geo?city=Stockholm". Då svarar server detta till klient:
+## First Endpoint
+### Called with for example "/api/v1/geo?city=Stockholm". Then the server responds this to the client:
 { "city":"Stockholm","country":"SE","lat":59.3293,"lon":18.0686 }
 
-## Andra Endpointen
-### Anropas med t.ex. "/api/v1/weather?lat=59.3293&lon=18.0686". Då svarar server detta till klient:
+## Second Endpoint
+### Called with for example "/api/v1/weather?lat=59.3293&lon=18.0686". Then the server responds this to the client:
 { "tempC":7.0,"weather_code":"0","updatedAt":"2025-11-02T09:00:00Z" }
 
-# CodeﾠDescription 
-### Väderkoden som ges har följande betydelse:
-0ﾠClear sky
+# Weather Code Description
+### The weather code given has the following meaning:
+0 Clear sky
 
-1, 2, 3ﾠMainly clear, partly cloudy, and overcast
+1, 2, 3 Mainly clear, partly cloudy, and overcast
 
-45, 48ﾠFog and depositing rime fog
+45, 48 Fog and depositing rime fog
 
-51, 53, 55ﾠDrizzle: Light, moderate, and dense intensity
+51, 53, 55 Drizzle: Light, moderate, and dense intensity
 
-56, 57ﾠFreezing Drizzle: Light and dense intensity
+56, 57 Freezing Drizzle: Light and dense intensity
 
-61, 63, 65ﾠRain: Slight, moderate and heavy intensity
+61, 63, 65 Rain: Slight, moderate and heavy intensity
 
-66, 67ﾠFreezing Rain: Light and heavy intensity
+66, 67 Freezing Rain: Light and heavy intensity
 
-71, 73, 75ﾠSnow fall: Slight, moderate, and heavy intensity
+71, 73, 75 Snow fall: Slight, moderate, and heavy intensity
 
-77ﾠSnow grains
+77 Snow grains
 
-80, 81, 82ﾠRain showers: Slight, moderate, and violent
+80, 81, 82 Rain showers: Slight, moderate, and violent
 
-85, 86ﾠSnow showers slight and heavy
+85, 86 Snow showers slight and heavy
 
-95 *ﾠThunderstorm: Slight or moderate
+95 * Thunderstorm: Slight or moderate
 
-96, 99 *ﾠThunderstorm with slight and heavy hail
-
-# Tmux Instructions
-
-### Start server in detached tmux session
-make run-tmux
-
-### Check if it's running
-tmux list-sessions
-
-### Attach to see server output
-tmux attach -t weather-server
-
-### Detach from session (server keeps running)
-Ctrl+B, then D
-
-## Stop the server
-make kill-server
+96, 99 * Thunderstorm with slight and heavy hail

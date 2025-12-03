@@ -1,5 +1,6 @@
-#include "HTTPServer.h"
 #include <stdlib.h>
+#include "HTTPServer.h"
+
 
 //-----------------Internal Functions-----------------
 
@@ -12,7 +13,9 @@ int HTTPServer_Initiate(HTTPServer* _Server, HTTPServer_OnConnection _OnConnecti
 {
 	_Server->onConnection = _OnConnection;
 
-	TCPServer_Initiate(&_Server->tcpServer, "10380", HTTPServer_OnAccept, _Server);
+	TCPServer_Initiate(&_Server->tcpServer, HTTP_SERVER_PORT, HTTPServer_OnAccept, _Server);
+	
+	printf("HTTP Server starting on port %s\n", HTTP_SERVER_PORT);
 	
 	_Server->task = smw_createTask(_Server, HTTPServer_TaskWork);
 
@@ -52,7 +55,7 @@ int HTTPServer_OnAccept(int _FD, void* _Context)
 		return -1;
 	}
 
-	_Server->onConnection(_Server, connection); // Här anropar vi WeatherServer_OnHTTPConnection
+	_Server->onConnection(_Server, connection); // Here we call WeatherServer_OnHTTPConnection
 	
 	return 0;
 }
