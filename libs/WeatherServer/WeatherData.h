@@ -3,13 +3,14 @@
 
 #include "HTTPServerConnection.h"
 
-
 typedef struct {
 
     char* city;
     char* latitude;
     char* longitude;
     char* response;
+    
+    int request_complete;
 
 } WeatherData;
 
