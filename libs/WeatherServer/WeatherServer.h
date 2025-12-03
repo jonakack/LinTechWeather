@@ -20,7 +20,6 @@ typedef struct
 int WeatherServer_Initiate(WeatherServer* _Server);
 int WeatherServer_InitiatePtr(WeatherServer** _ServerPtr);
 
-
 void WeatherServer_Dispose(WeatherServer* _Server);
 void WeatherServer_DisposePtr(WeatherServer** _ServerPtr);
 

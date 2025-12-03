@@ -76,8 +76,7 @@ void WeatherServer_TaskWork(void* _Context, uint64_t _MonTime)
 		Node* next = current->front;  // Save next before potential removal
 		
 		if (instance->completed) {
-			printf("WeatherServer: Removing completed instance\n");
-			// Use LinkedList_remove with WeatherServerInstance_Dispose (not _DisposePtr)
+			// printf("WeatherServer: Removing completed instance\n");
 			LinkedList_remove(_Server->instances, current, (void(*)(void*))WeatherServerInstance_Dispose);
 		}
 		

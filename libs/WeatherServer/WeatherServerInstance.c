@@ -51,7 +51,7 @@ void WeatherServerInstance_Work(WeatherServerInstance* _Instance, uint64_t _MonT
 	if (_Instance->connection && _Instance->connection->requestReceived && !_Instance->completed) {
 		// Mark this instance as completed and ready for cleanup
 		_Instance->completed = 1;
-		printf("WeatherServerInstance: Instance completed, marked for cleanup\n");
+		// printf("WeatherServerInstance: Instance completed, marked for cleanup\n");
 	}
 }
 
