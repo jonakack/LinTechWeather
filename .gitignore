@@ -1,4 +1,3 @@
-# Prerequisites
 *.d
 
 # Object files
@@ -64,6 +63,10 @@ server
 # Build directories
 build/
 */build/
+
+# Cache directories
+cache
+**/cache/
 
 # IDE/Editor directories
 .vscode/
