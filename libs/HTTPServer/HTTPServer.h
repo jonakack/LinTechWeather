@@ -1,10 +1,14 @@
-
 #ifndef __HTTPServer_h_
 #define __HTTPServer_h_
 
 #include "smw.h"
 #include "HTTPServerConnection.h"
 #include "TCPServer.h"
+
+// Default port if not defined at compile time
+#ifndef HTTP_SERVER_PORT
+#define HTTP_SERVER_PORT "8080"
+#endif
 
 typedef int (*HTTPServer_OnConnection)(void* _Context, HTTPServerConnection* _Connection);
 

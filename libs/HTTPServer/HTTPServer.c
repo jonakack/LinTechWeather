@@ -1,11 +1,5 @@
-#include "HTTPServer.h"
 #include <stdlib.h>
-
-// Default port if not defined at compile time
-#ifndef HTTP_SERVER_PORT
-#define HTTP_SERVER_PORT "8080"
-#endif
-
+#include "HTTPServer.h"
 
 
 //-----------------Internal Functions-----------------
@@ -61,7 +55,7 @@ int HTTPServer_OnAccept(int _FD, void* _Context)
 		return -1;
 	}
 
-	_Server->onConnection(_Server, connection); // Här anropar vi WeatherServer_OnHTTPConnection
+	_Server->onConnection(_Server, connection); // Here we call WeatherServer_OnHTTPConnection
 	
 	return 0;
 }
