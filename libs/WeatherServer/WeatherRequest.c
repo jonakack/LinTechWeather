@@ -1,4 +1,6 @@
 #include "WeatherRequest.h"
+#include "smw.h"
+#include "utils.h"
 
 RouteResult WeatherRequest_HandleRequest(HTTPServerConnection* _Connection)
 {
@@ -69,7 +71,7 @@ char* WeatherRequest_HandleGeoRequest(const char* _Url)
     };
 
     int cache_status = Cache_Check(_GeoData->city, &geo_cache);
-    // Always use cached data, since this doesn't need to be renewed.
+    // Always use cached data, since cities don't move
     if (cache_status != DOES_NOT_EXIST) 
     {
         // Convert to JSON from cached file
@@ -92,6 +94,31 @@ char* WeatherRequest_HandleGeoRequest(const char* _Url)
             WeatherData_Dispose(_GeoData);
             return NULL;
         }
+
+        // Wait for the async request to complete
+        uint64_t start_time = SystemMonotonicMS();
+        uint64_t timeout_ms = 5000; // 5 seconds
+        
+        while (!_GeoData->request_complete) {
+            uint64_t current_time = SystemMonotonicMS();
+            if (current_time - start_time > timeout_ms) {
+                printf("HTTP request timeout for geo data\n");
+                break;
+            }
+            
+            // Let HTTP tasks run - this is non-blocking
+            smw_work(current_time);
+            
+            // Small yield to prevent busy waiting (much smaller than old 10ms)
+            usleep(1000); // 1ms - responsive but not busy wait
+        }
+        
+        if (_GeoData->response == NULL) {
+            printf("HTTP request timeout for geo data\n");
+            WeatherData_Dispose(_GeoData);
+            return NULL;
+        }
+
         // Convert to JSON from get request
         json_response = WeatherData_HttpResponseToJson(_GeoData->response);
 
@@ -155,6 +182,30 @@ char* WeatherRequest_HandleWeatherRequest(const char* _Url)
         if (HTTPClient_GetWeatherData(_WeatherData) != 0) 
         {
             printf("Failed to fetch weather data\n");
+            WeatherData_Dispose(_WeatherData);
+            return NULL;
+        }
+
+        // Wait for the async request to complete
+        uint64_t start_time = SystemMonotonicMS();
+        uint64_t timeout_ms = 5000; // 5 seconds
+        
+        while (!_WeatherData->request_complete) {
+            uint64_t current_time = SystemMonotonicMS();
+            if (current_time - start_time > timeout_ms) {
+                printf("HTTP request timeout for weather data\n");
+                break;
+            }
+            
+            // Let HTTP tasks, non-blocking
+            smw_work(current_time);
+            
+            // Small yield to prevent busy waiting
+            usleep(1000);
+        }
+        
+        if (_WeatherData->response == NULL) {
+            printf("HTTP request timeout for weather data\n");
             WeatherData_Dispose(_WeatherData);
             return NULL;
         }

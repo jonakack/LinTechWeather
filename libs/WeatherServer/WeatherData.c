@@ -13,6 +13,9 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
     if (!data)
         return NULL;
 
+    // Initialize flags
+    data->request_complete = 0;
+
     // Get parameters
     char *city_raw = get_query_param(_Url, "city");
     data->latitude = get_query_param(_Url, "lat");
@@ -29,7 +32,8 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
             WeatherData_Dispose(data);
             return NULL;
         }
-        // VALIDERA city name
+
+        // Validate city name
         if (!validate_city_name(data->city))
         {
             printf("Invalid city name: %s\n", data->city);
@@ -38,8 +42,9 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
         }
         return data;
     }
+    
     // If it's a WeatherRequest
-    if (data->latitude && data->longitude) 
+    if (data->latitude && data->longitude)
     {
         // VALIDERA latitude
         if (!data->latitude || !validate_latitude(data->latitude))
@@ -48,7 +53,7 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
             WeatherData_Dispose(data);
             return NULL;
         }
-        // VALIDERA longitude
+        // VALIDATE longitude
         if (!data->longitude || !validate_longitude(data->longitude))
         {
             printf("Invalid longitude: %s\n", data->longitude ? data->longitude : "NULL");
@@ -57,7 +62,8 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
         }
         return data;
     }
-    else return NULL;
+    else
+        return NULL;
 }
 
 // Shared function to parse HTTP response to clean JSON
