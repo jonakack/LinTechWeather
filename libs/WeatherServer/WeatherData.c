@@ -14,7 +14,7 @@ WeatherData *WeatherData_ParseRequest(const char *_Url)
         return NULL;
 
     // Initialize flags
-    data->request_complete = 0;
+    data->requestComplete = 0;
 
     // Get parameters
     char *city_raw = get_query_param(_Url, "city");

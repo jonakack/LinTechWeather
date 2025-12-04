@@ -9,223 +9,346 @@ RouteResult WeatherRequest_HandleRequest(HTTPServerConnection* _Connection)
     }
 
     const char* url = _Connection->url;
-    char* json_response = NULL;
+
+    // Here we determine which endpoint is being requested
+    RouteResult result; // To hold the result of the handler
 
     // Route to appropriate handler based on URL path
     if (compare_url(url, "/api/v1/geo")) {
-        json_response = WeatherRequest_HandleGeoRequest(url);
+        result = WeatherRequest_HandleGeoRequest(_Connection, url);
     }
     else if (compare_url(url, "/api/v1/weather")) {
-        json_response = WeatherRequest_HandleWeatherRequest(url);
+        result = WeatherRequest_HandleWeatherRequest(_Connection, url);
     }
     else {
         // Unknown endpoint
-        HTTPResponse_SendError(&_Connection->tcpClient,
-                              HTTP_STATUS_404_NOT_FOUND,
-                              "Endpoint not found");
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_NOT_FOUND,
+                                     "Endpoint not found");
         return ROUTE_NOT_FOUND;
     }
 
-    // Check if we got a valid JSON response
-    if (json_response == NULL) {
-        HTTPResponse_SendError(&_Connection->tcpClient,
-                              HTTP_STATUS_400_BAD_REQUEST,
-                              "Invalid request parameters");
+    // ROUTE_SUCCESS = cache hit, response already set
+    // ROUTE_PENDING = async request started, will call back later
+    // Other = error, error response already set
+    return result;
+}
+
+RouteResult WeatherRequest_HandleGeoRequest(HTTPServerConnection* _Connection, const char* _Url)
+{
+    if (_Connection == NULL || _Url == NULL)
+    {
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_BAD_REQUEST,
+                                     "Invalid request parameters");
         return ROUTE_BAD_REQUEST;
     }
 
-    // Send successful JSON response
-    int send_result = HTTPResponse_SendJson(&_Connection->tcpClient, json_response);
-
-    // Free JSON response
-    free(json_response);
-
-    if (send_result < 0) {
-        return ROUTE_INTERNAL_ERROR;
-    }
-
-    return ROUTE_SUCCESS;
-}
-
-char* WeatherRequest_HandleGeoRequest(const char* _Url)
-{
-    if (_Url == NULL) 
-    {
-        return NULL;
-    }
-
     // Parse geo request from URL
-    WeatherData* _GeoData = WeatherData_ParseRequest(_Url);
-    if (_GeoData == NULL) 
+    WeatherData* geoData = WeatherData_ParseRequest(_Url);
+    if (geoData == NULL)
     {
-        return NULL;
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_BAD_REQUEST,
+                                     "Invalid request parameters");
+        return ROUTE_BAD_REQUEST;
     }
-
-    char* json_response = NULL;
 
     // Initialize cache configuration
-    CacheConfig geo_cache = 
+    CacheConfig geoCache =
     {
         .base_path = "./libs/WeatherServer/cache/geodata",
         .ttl_seconds = 900  // 15 minutes
     };
 
-    int cache_status = Cache_Check(_GeoData->city, &geo_cache);
-    // Always use cached data, since cities don't move
-    if (cache_status != DOES_NOT_EXIST) 
+    int cacheStatus = Cache_Check(geoData->city, &geoCache);
+
+    // Always use cached data if available, since cities don't move
+    if (cacheStatus != DOES_NOT_EXIST)
     {
         // Convert to JSON from cached file
-        json_response = Cache_Load(_GeoData->city, &geo_cache);
-        if (json_response == NULL) 
+        char* jsonResponse = Cache_Load(geoData->city, &geoCache);
+        if (jsonResponse != NULL)
         {
-            printf("Failed to read cache, fetching new data\n");
-            cache_status = DOES_NOT_EXIST; // Force fetch
+            // Cache hit - send response immediately
+            HTTPResponse_SetJsonResponse(_Connection, jsonResponse);
+            free(jsonResponse);
+            WeatherData_Dispose(geoData);
+            return ROUTE_SUCCESS;
         }
+        printf("Failed to read cache, fetching new data\n");
     }
 
-    if (cache_status == DOES_NOT_EXIST) 
-    {
-        // Fetch new data
-        printf("Fetching new geo data for: %s\n", _GeoData->city);
+    // Cache miss - start async request
+    printf("Fetching new geo data for: %s\n", geoData->city);
 
-        if (HTTPClient_GetGeoData(_GeoData) != 0) 
-        {
-            printf("Failed to fetch geo data\n");
-            WeatherData_Dispose(_GeoData);
-            return NULL;
-        }
-
-        // Wait for the async request to complete
-        uint64_t start_time = SystemMonotonicMS();
-        uint64_t timeout_ms = 5000; // 5 seconds
-        
-        while (!_GeoData->request_complete) {
-            uint64_t current_time = SystemMonotonicMS();
-            if (current_time - start_time > timeout_ms) {
-                printf("HTTP request timeout for geo data\n");
-                break;
-            }
-            
-            // Let HTTP tasks run - this is non-blocking
-            smw_work(current_time);
-            
-            // Small yield to prevent busy waiting (much smaller than old 10ms)
-            usleep(1000); // 1ms - responsive but not busy wait
-        }
-        
-        if (_GeoData->response == NULL) {
-            printf("HTTP request timeout for geo data\n");
-            WeatherData_Dispose(_GeoData);
-            return NULL;
-        }
-
-        // Convert to JSON from get request
-        json_response = WeatherData_HttpResponseToJson(_GeoData->response);
-
-        if (json_response != NULL) 
-        {
-            if (Cache_Save(_GeoData->city, json_response, &geo_cache) != 0) {
-                printf("Warning: Failed to save geo data to cache\n");
-            }
-        }
+    // Create async context
+    WeatherRequestContext* context = malloc(sizeof(WeatherRequestContext));
+    if (context == NULL) {
+        WeatherData_Dispose(geoData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Internal server error");
+        return ROUTE_INTERNAL_ERROR;
     }
 
-    WeatherData_Dispose(_GeoData);
-    return json_response;
+    context->connection = _Connection;
+    context->cacheConfig = geoCache;
+    strncpy(context->cacheKey, geoData->city, sizeof(context->cacheKey) - 1);
+    context->cacheKey[sizeof(context->cacheKey) - 1] = '\0';
+
+    // Store context in HTTPClient (we'll use a custom wrapper)
+    HTTPClient* client = malloc(sizeof(HTTPClient));
+    if (client == NULL) {
+        free(context);
+        WeatherData_Dispose(geoData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Internal server error");
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    HTTPClient_Initiate(client);
+    strcpy(client->host, "geocoding-api.open-meteo.com");
+    strcpy(client->port, "80");
+    client->weather_data = geoData;
+
+    // Store context in weather data so callback can access it
+    geoData->context = context;
+
+    char url[256];
+    snprintf(url, sizeof(url), "/v1/search?name=%s", geoData->city);
+
+    if (HTTPClient_GET(client, url, WeatherRequest_OnGeoDataComplete) != 0) {
+        free(context);
+        free(client);
+        WeatherData_Dispose(geoData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Failed to start request");
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    // Request started successfully - response will be sent by callback
+    return ROUTE_PENDING;
 }
 
-char* WeatherRequest_HandleWeatherRequest(const char* _Url)
+RouteResult WeatherRequest_HandleWeatherRequest(HTTPServerConnection* _Connection, const char* _Url)
 {
-    if (_Url == NULL) 
+    if (_Connection == NULL || _Url == NULL)
     {
-        return NULL;
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_BAD_REQUEST,
+                                     "Invalid request parameters");
+        return ROUTE_BAD_REQUEST;
     }
 
-    WeatherData* _WeatherData = WeatherData_ParseRequest(_Url);
-    if (_WeatherData == NULL) 
+    WeatherData* weatherData = WeatherData_ParseRequest(_Url);
+    if (weatherData == NULL)
     {
-        return NULL;
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_BAD_REQUEST,
+                                     "Invalid request parameters");
+        return ROUTE_BAD_REQUEST;
     }
-
-    char* json_response = NULL;
 
     // Initialize cache configuration
-    CacheConfig weather_cache = 
+    CacheConfig weatherCache =
     {
         .base_path = "./libs/WeatherServer/cache/weatherdata",
         .ttl_seconds = 900  // 15 minutes
     };
 
-    char cache_key[256];
-    snprintf(cache_key, sizeof(cache_key), "%s_%s",
-             _WeatherData->latitude, _WeatherData->longitude);
+    char cacheKey[256];
+    snprintf(cacheKey, sizeof(cacheKey), "%s_%s",
+             weatherData->latitude, weatherData->longitude);
 
-    int cache_status = Cache_Check(cache_key, &weather_cache);
+    int cacheStatus = Cache_Check(cacheKey, &weatherCache);
 
-    if (cache_status == UP_TO_DATE) 
+    if (cacheStatus == UP_TO_DATE)
     {
-        json_response = Cache_Load(cache_key, &weather_cache);
-
-        if (json_response == NULL) 
+        char* jsonResponse = Cache_Load(cacheKey, &weatherCache);
+        if (jsonResponse != NULL)
         {
-            printf("Failed to read cache, fetching new data\n");
-            cache_status = DOES_NOT_EXIST; // Force fetch
+            // Cache hit - send response immediately
+            HTTPResponse_SetJsonResponse(_Connection, jsonResponse);
+            free(jsonResponse);
+            WeatherData_Dispose(weatherData);
+            return ROUTE_SUCCESS;
         }
+        printf("Failed to read cache, fetching new data\n");
     }
 
-    if (cache_status != UP_TO_DATE) 
-    {
-        // Fetch new data
-        printf("Fetching new weather data for: %s, %s\n",
-               _WeatherData->latitude, _WeatherData->longitude);
+    // Cache miss - start async request
+    printf("Fetching new weather data for: %s, %s\n",
+           weatherData->latitude, weatherData->longitude);
 
-        if (HTTPClient_GetWeatherData(_WeatherData) != 0) 
-        {
-            printf("Failed to fetch weather data\n");
-            WeatherData_Dispose(_WeatherData);
-            return NULL;
-        }
-
-        // Wait for the async request to complete
-        uint64_t start_time = SystemMonotonicMS();
-        uint64_t timeout_ms = 5000; // 5 seconds
-        
-        while (!_WeatherData->request_complete) {
-            uint64_t current_time = SystemMonotonicMS();
-            if (current_time - start_time > timeout_ms) {
-                printf("HTTP request timeout for weather data\n");
-                break;
-            }
-            
-            // Let HTTP tasks, non-blocking
-            smw_work(current_time);
-            
-            // Small yield to prevent busy waiting
-            usleep(1000);
-        }
-        
-        if (_WeatherData->response == NULL) {
-            printf("HTTP request timeout for weather data\n");
-            WeatherData_Dispose(_WeatherData);
-            return NULL;
-        }
-
-        // Convert to JSON
-        json_response = WeatherData_HttpResponseToJson(_WeatherData->response);
-
-        // Save to cache using generic API
-        if (json_response != NULL) 
-        {
-            if (Cache_Save(cache_key, json_response, &weather_cache) != 0) {
-                printf("Warning: Failed to save weather data to cache\n");
-            }
-        }
+    // Create async context
+    WeatherRequestContext* context = malloc(sizeof(WeatherRequestContext));
+    if (context == NULL) {
+        WeatherData_Dispose(weatherData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Internal server error");
+        return ROUTE_INTERNAL_ERROR;
     }
 
-    // Free weather data
-    WeatherData_Dispose(_WeatherData);
+    context->connection = _Connection;
+    context->cacheConfig = weatherCache;
+    strncpy(context->cacheKey, cacheKey, sizeof(context->cacheKey) - 1);
+    context->cacheKey[sizeof(context->cacheKey) - 1] = '\0';
 
-    return json_response;
+    // Store context in HTTPClient
+    HTTPClient* client = malloc(sizeof(HTTPClient));
+    if (client == NULL) {
+        free(context);
+        WeatherData_Dispose(weatherData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Internal server error");
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    HTTPClient_Initiate(client);
+    strcpy(client->host, "api.open-meteo.com");
+    strcpy(client->port, "80");
+    client->weather_data = weatherData;
+    weatherData->context = context;
+
+    char url[256];
+    snprintf(url, sizeof(url), "/v1/forecast?latitude=%s&longitude=%s&current_weather=true",
+             weatherData->latitude, weatherData->longitude);
+
+    if (HTTPClient_GET(client, url, WeatherRequest_OnWeatherDataComplete) != 0) {
+        free(context);
+        free(client);
+        WeatherData_Dispose(weatherData);
+        HTTPResponse_SetErrorResponse(_Connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Failed to start request");
+        return ROUTE_INTERNAL_ERROR;
+    }
+
+    // Request started successfully - response will be sent by callback
+    return ROUTE_PENDING;
+}
+
+// Async callback for geo data completion
+void WeatherRequest_OnGeoDataComplete(HTTPClient* _Client, const char* _Event)
+{
+    if (strcmp(_Event, "complete") != 0 || _Client == NULL) {
+        return;
+    }
+
+    WeatherData* geoData = _Client->weather_data;
+    if (geoData == NULL || geoData->context == NULL) {
+        // Something went wrong - cleanup what we can
+        // HTTPClient task and buffer will be cleaned up by state machine
+        return;
+    }
+
+    WeatherRequestContext* context = (WeatherRequestContext*)geoData->context;
+
+    // Convert HTTP response to JSON
+    char* jsonResponse = WeatherData_HttpResponseToJson((char*)_Client->buffer);
+
+    if (jsonResponse != NULL) {
+        // Save to cache
+        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) {
+            printf("Warning: Failed to save geo data to cache\n");
+        }
+
+        // Set response on connection
+        HTTPResponse_SetJsonResponse(context->connection, jsonResponse);
+        free(jsonResponse);
+    } else {
+        // Failed to parse response
+        HTTPResponse_SetErrorResponse(context->connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Failed to process geo data");
+    }
+
+    // Cleanup our allocated resources
+    free(context);
+    WeatherData_Dispose(geoData);
+
+    // Cleanup HTTPClient - we do it here to avoid state machine trying to do it
+    // Destroy task
+    if (_Client->task != NULL) {
+        smw_destroyTask(_Client->task);
+        _Client->task = NULL;  // Prevent double-destroy in Close state
+    }
+
+    // Free buffer
+    if (_Client->buffer != NULL) {
+        free(_Client->buffer);
+        _Client->buffer = NULL;
+    }
+
+    // Disconnect TCP
+    TCPClient_Disconnect(&_Client->tcpClient);
+
+    // Free HTTPClient structure itself
+    free(_Client);
+}
+
+// Async callback for weather data completion
+void WeatherRequest_OnWeatherDataComplete(HTTPClient* _Client, const char* _Event)
+{
+    if (strcmp(_Event, "complete") != 0 || _Client == NULL) {
+        return;
+    }
+
+    WeatherData* weatherData = _Client->weather_data;
+    if (weatherData == NULL || weatherData->context == NULL) {
+        // Something went wrong - cleanup what we can
+        // HTTPClient task and buffer will be cleaned up by state machine
+        return;
+    }
+
+    WeatherRequestContext* context = (WeatherRequestContext*)weatherData->context;
+
+    // Convert HTTP response to JSON
+    char* jsonResponse = WeatherData_HttpResponseToJson((char*)_Client->buffer);
+
+    if (jsonResponse != NULL) {
+        // Save to cache
+        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) {
+            printf("Warning: Failed to save weather data to cache\n");
+        }
+
+        // Set response on connection
+        HTTPResponse_SetJsonResponse(context->connection, jsonResponse);
+        free(jsonResponse);
+    } else {
+        // Failed to parse response
+        HTTPResponse_SetErrorResponse(context->connection,
+                                     STATUS_INTERNAL_SERVER_ERROR,
+                                     "Failed to process weather data");
+    }
+
+    // Cleanup our allocated resources
+    free(context);
+    WeatherData_Dispose(weatherData);
+
+    // Cleanup HTTPClient - we do it here to avoid state machine trying to do it
+    // Destroy task
+    if (_Client->task != NULL) {
+        smw_destroyTask(_Client->task);
+        _Client->task = NULL;  // Prevent double-destroy in Close state
+    }
+
+    // Free buffer
+    if (_Client->buffer != NULL) {
+        free(_Client->buffer);
+        _Client->buffer = NULL;
+    }
+
+    // Disconnect TCP
+    TCPClient_Disconnect(&_Client->tcpClient);
+
+    // Free HTTPClient structure itself
+    free(_Client);
 }
 
 int WeatherRequest_ParseHTTPRequest(const char* _RequestLine, HTTPRequest* _ParsedRequest)

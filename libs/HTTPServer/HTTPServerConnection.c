@@ -22,7 +22,20 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 	_Connection->context = NULL;
 	_Connection->onRequest = NULL;
 	_Connection->requestReceived = 0;
-	
+
+	// Initialize state machine fields
+	_Connection->state = HTTPServerConnectionState_ReceiveRequest;
+	_Connection->receiveBufferCapacity = 4096;
+	_Connection->receiveBuffer = malloc(_Connection->receiveBufferCapacity);
+	_Connection->receiveBufferSize = 0;
+	_Connection->responseBuffer = NULL;
+	_Connection->responseLength = 0;
+	_Connection->bytesSent = 0;
+	_Connection->callbackInvoked = 0;
+
+	if(_Connection->receiveBuffer == NULL)
+		return -1;
+
 	_Connection->task = smw_createTask(_Connection, HTTPServerConnection_TaskWork);
 
 	return 0;
@@ -55,6 +68,26 @@ void HTTPServerConnection_SetCallback(HTTPServerConnection* _Connection, void* _
 	_Connection->onRequest = _OnRequest;
 }
 
+void HTTPServerConnection_SetResponse(HTTPServerConnection* _Connection, const char* _Response, size_t _Length)
+{
+	if(_Connection->responseBuffer != NULL)
+	{
+		free(_Connection->responseBuffer);
+		_Connection->responseBuffer = NULL;
+	}
+
+	_Connection->responseBuffer = malloc(_Length);
+	if(_Connection->responseBuffer != NULL)
+	{
+		memcpy(_Connection->responseBuffer, _Response, _Length);
+		_Connection->responseLength = _Length;
+	}
+	else
+	{
+		_Connection->responseLength = 0;
+	}
+}
+
 void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 {
 	if (_Context == NULL)
@@ -62,109 +95,169 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime)
 
 	HTTPServerConnection* _Connection = (HTTPServerConnection*)_Context;
 
-	// If we have already processed the request, do nothing more
-	if (_Connection->requestReceived)
-		return;
-
-	char buffer[4096];
-	int bytesRead = TCPClient_Read(&_Connection->tcpClient, (uint8_t*)buffer, sizeof(buffer) - 1);
-	
-	// EAGAIN/EWOULDBLOCK = no data available yet
-	if (bytesRead == -1)
+	switch (_Connection->state)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
+		case HTTPServerConnectionState_ReceiveRequest:
 		{
+			// Check if we need to expand buffer
+			size_t availableSpace = _Connection->receiveBufferCapacity - _Connection->receiveBufferSize;
+
+			if (availableSpace < 512)
+			{
+				// Need to expand buffer
+				size_t newCapacity = _Connection->receiveBufferCapacity * 2;
+				char* newBuffer = realloc(_Connection->receiveBuffer, newCapacity);
+				if (newBuffer == NULL)
+				{
+					printf("HTTPServerConnection: Failed to expand receive buffer\n");
+					_Connection->state = HTTPServerConnectionState_Close;
+					break;
+				}
+				_Connection->receiveBuffer = newBuffer;
+				_Connection->receiveBufferCapacity = newCapacity;
+				availableSpace = newCapacity - _Connection->receiveBufferSize;
+			}
+
+			// Read data incrementally
+			int bytesRead = TCPClient_Read(&_Connection->tcpClient,
+											(uint8_t*)(_Connection->receiveBuffer + _Connection->receiveBufferSize),
+											availableSpace);
+
+			if (bytesRead > 0)
+			{
+				_Connection->receiveBufferSize += bytesRead;
+				_Connection->receiveBuffer[_Connection->receiveBufferSize] = '\0';
+
+				// Check if we have complete request (ends with \r\n\r\n)
+				if (strstr(_Connection->receiveBuffer, "\r\n\r\n") != NULL)
+				{
+					_Connection->state = HTTPServerConnectionState_ProcessRequest;
+				}
+			}
+			else if (bytesRead == 0)
+			{
+				// Connection closed by client
+				printf("HTTPServerConnection: Client closed connection during receive\n");
+				_Connection->state = HTTPServerConnectionState_Close;
+			}
+			else if (errno != EAGAIN && errno != EWOULDBLOCK)
+			{
+				// Real error
+				printf("HTTPServerConnection: Read error during receive\n");
+				_Connection->state = HTTPServerConnectionState_Close;
+			}
+			// else: EAGAIN/EWOULDBLOCK - just wait for more data
+			break;
+		}
+
+		case HTTPServerConnectionState_ProcessRequest:
+		{
+			// Store the full raw request
+			size_t bufferLen = strlen(_Connection->receiveBuffer);
+			_Connection->raw_request = (char*)malloc(bufferLen + 1);
+			if (_Connection->raw_request != NULL)
+			{
+				strcpy(_Connection->raw_request, _Connection->receiveBuffer);
+			}
+
+			// Parse first line: "GET /index.html HTTP/1.1"
+			char method[16] = {0};
+			char url[512] = {0};
+
+			if (sscanf(_Connection->receiveBuffer, "%15s %511s", method, url) == 2)
+			{
+				// Allocate and save method
+				size_t methodLen = strlen(method);
+				_Connection->method = (char*)malloc(methodLen + 1);
+				if (_Connection->method != NULL)
+				{
+					strncpy(_Connection->method, method, methodLen);
+					_Connection->method[methodLen] = '\0';
+				}
+
+				// Allocate and save url
+				size_t urlLen = strlen(url);
+				_Connection->url = (char*)malloc(urlLen + 1);
+				if (_Connection->url != NULL)
+				{
+					strncpy(_Connection->url, url, urlLen);
+					_Connection->url[urlLen] = '\0';
+				}
+
+				// Mark that we have received the request
+				_Connection->requestReceived = 1;
+
+				// Move to callback state
+				_Connection->state = HTTPServerConnectionState_WaitingCallback;
+			}
+			else
+			{
+				// Parse error
+				printf("HTTPServerConnection: Failed to parse request\n");
+				_Connection->state = HTTPServerConnectionState_Close;
+			}
+			break;
+		}
+
+		case HTTPServerConnectionState_WaitingCallback:
+		{
+			// Call user callback ONCE if it's a GET request
+			if (!_Connection->callbackInvoked && strcmp(_Connection->method, "GET") == 0 && _Connection->onRequest != NULL)
+			{
+				_Connection->onRequest(_Connection->context);
+				_Connection->callbackInvoked = 1;
+			}
+
+			// Check if response has been set (either immediately or by async callback later)
+			if (_Connection->responseBuffer != NULL && _Connection->responseLength > 0)
+			{
+				_Connection->state = HTTPServerConnectionState_SendResponse;
+				_Connection->bytesSent = 0;
+			}
+			// Else: Stay in WaitingCallback state waiting for async response
+			break;
+		}
+
+		case HTTPServerConnectionState_SendResponse:
+		{
+			int bytesToSend= _Connection->responseLength - _Connection->bytesSent;
+			int sent = TCPClient_Write(&_Connection->tcpClient, (uint8_t*)(_Connection->responseBuffer + _Connection->bytesSent), bytesToSend);
+
+			if (sent > 0)
+			{
+				_Connection->bytesSent += sent;
+
+				if (_Connection->bytesSent >= _Connection->responseLength)
+				{
+					// All sent, now we can close
+					printf("HTTPServerConnection: Response sent completely (%zu bytes)\n", _Connection->responseLength);
+					_Connection->state = HTTPServerConnectionState_Close;
+				}
+			}
+			else if (sent == 0)
+			{
+				// Connection closed
+				printf("HTTPServerConnection: Connection closed during send\n");
+				_Connection->state = HTTPServerConnectionState_Close;
+			}
+			else if (errno != EAGAIN && errno != EWOULDBLOCK)
+			{
+				// Real error
+				printf("HTTPServerConnection: Write error during send\n");
+				_Connection->state = HTTPServerConnectionState_Close;
+			}
+			// else: EAGAIN/EWOULDBLOCK - try again next iteration
+			break;
+		}
+
+		case HTTPServerConnectionState_Close:
+		{
+			printf("HTTPServerConnection: Closing connection\n");
+			HTTPServerConnection_Dispose(_Connection);
+			// Task will be destroyed in Dispose, so we must return
 			return;
 		}
-		return;
 	}
-	
-	// Connection closed. todo = dispose
-	if (bytesRead == 0)
-	{
-		return;
-	}
-	
-	// Null-terminera buffern
-	buffer[bytesRead] = '\0';
-
-	// Check if we have the complete HTTP message (ends with \r\n\r\n)
-	if (strstr(buffer, "\r\n\r\n") == NULL)
-	{
-		// Incomplete request, wait for more data
-		return;
-	}
-
-	// Store the full raw request
-	size_t buffer_len = strlen(buffer);
-	_Connection->raw_request = (char*)malloc(buffer_len + 1);
-	if (_Connection->raw_request != NULL)
-	{
-		strcpy(_Connection->raw_request, buffer);
-	}
-	
-	// Parse first line: "GET /index.html HTTP/1.1"
-	char method[16] = {0};
-	char url[512] = {0};
-
-	if (sscanf(buffer, "%15s %511s", method, url) == 2)
-	{
-		// Allocate and save method
-		size_t method_len = strlen(method);
-		_Connection->method = (char*)malloc(method_len + 1);
-		if (_Connection->method != NULL)
-		{
-			// strcpy(_Connection->method, method);
-			strncpy(_Connection->method, method, method_len);
-			_Connection->method[method_len] = '\0';
-		}
-
-		// Allocate and save url
-		size_t url_len = strlen(url);
-		_Connection->url = (char*)malloc(url_len + 1);
-		if (_Connection->url != NULL)
-		{
-			// strcpy(_Connection->url, url);
-			strncpy(_Connection->url, url, url_len);
-			_Connection->url[url_len] = '\0';
-		}
-
-		// Read all headers (but ignore them for now)
-		char* header_start = strstr(buffer, "\r\n");
-		if (header_start != NULL)
-		{
-			header_start += 2; // Skip first \r\n
-			
-			// Loop through all headers until we find \r\n\r\n
-			while (header_start != NULL && strncmp(header_start, "\r\n", 2) != 0)
-			{
-				char* header_end = strstr(header_start, "\r\n");
-				if (header_end == NULL)
-					break;
-				
-				// Here we have a header line between header_start and header_end
-				// We ignore it for now
-				
-				header_start = header_end + 2;
-			}
-		}
-		
-		// Mark that we have received the request
-		_Connection->requestReceived = 1;
-
-		// HTTPServerConnection_EchoRequest(_Connection); // TEMPORARY - disabled for production
-
-		// If it is an HTTP GET, call callback
-		if (strcmp(_Connection->method, "GET") == 0)
-		{
-			if (_Connection->onRequest != NULL)
-			{
-				_Connection->onRequest(_Connection->context); // ---- Anropa WeatherServerInstance_OnRequest ----
-			}
-		}
-
-		HTTPServerConnection_Dispose(_Connection);
-    }
 }
 
 
@@ -191,9 +284,26 @@ void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 		free(_Connection->raw_request);
 		_Connection->raw_request = NULL;
 	}
-	
+
+	// Free state machine buffers
+	if(_Connection->receiveBuffer != NULL)
+	{
+		free(_Connection->receiveBuffer);
+		_Connection->receiveBuffer = NULL;
+	}
+	if(_Connection->responseBuffer != NULL)
+	{
+		free(_Connection->responseBuffer);
+		_Connection->responseBuffer = NULL;
+	}
+
 	TCPClient_Dispose(&_Connection->tcpClient);
-	smw_destroyTask(_Connection->task);
+
+	if(_Connection->task != NULL)
+	{
+		smw_destroyTask(_Connection->task);
+		_Connection->task = NULL;
+	}
 }
 
 void HTTPServerConnection_DisposePtr(HTTPServerConnection** _ConnectionPtr)

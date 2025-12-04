@@ -9,8 +9,9 @@ typedef struct {
     char* latitude;
     char* longitude;
     char* response;
-    
-    int request_complete;
+
+    int requestComplete;
+    void* context; 
 
 } WeatherData;
 

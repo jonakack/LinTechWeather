@@ -3,14 +3,14 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "TCPClient.h"
+#include "HTTPServerConnection.h"
 
 // HTTP status codes
 typedef enum {
-    HTTP_STATUS_200_OK = 200,
-    HTTP_STATUS_400_BAD_REQUEST = 400,
-    HTTP_STATUS_404_NOT_FOUND = 404,
-    HTTP_STATUS_500_INTERNAL_SERVER_ERROR = 500
+    STATUS_OK = 200,
+    STATUS_BAD_REQUEST = 400,
+    STATUS_NOT_FOUND = 404,
+    STATUS_INTERNAL_SERVER_ERROR = 500
 } HTTPStatusCode;
 
 // HTTP response structure
@@ -21,22 +21,17 @@ typedef struct {
     size_t bodyLength;
 } HTTPResponse;
 
-// Initialize response struct.
-int HTTPResponse_Initiate(HTTPResponse* _Response,
-                          HTTPStatusCode _StatusCode,
-                          const char* _ContentType,
-                          const char* _Body,
-                          size_t _BodyLength);
+// Initiate the response struct 
+int HTTPResponse_Initiate(HTTPResponse* _Response, HTTPStatusCode _StatusCode, const char* _ContentType, const char* _Body, size_t _BodyLength);
 
-// Send HTTP response over TCP connection. 
-int HTTPResponse_Send(const HTTPResponse* _Response, TCPClient* _TcpClient);
+// Set HTTP response on connection (-1 on error 0 on success)
+int HTTPResponse_SetResponse(HTTPServerConnection* _Connection, const HTTPResponse* _Response);
 
-// Send JSON error response with given status code. 
-int HTTPResponse_SendError(TCPClient* _TcpClient,
-                           HTTPStatusCode _StatusCode,
-                           const char* _ErrorMessage);
+// Set JSON response on connection (-1 on error 0 on success)
+int HTTPResponse_SetJsonResponse(HTTPServerConnection* _Connection, const char* _JsonBody);
 
-// Send JSON response with 200 OK status.
-int HTTPResponse_SendJson(TCPClient* _TcpClient, const char* _JsonBody);
+// Set JSON error response on connection (-1 on error 0 on success) 
+int HTTPResponse_SetErrorResponse(HTTPServerConnection* _Connection, HTTPStatusCode _StatusCode, const char* _ErrorMessage);
+
 
 #endif // __HTTPResponse_h_

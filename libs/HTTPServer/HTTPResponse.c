@@ -1,30 +1,27 @@
 #include "HTTPResponse.h"
+#include "HTTPServerConnection.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-// Convert status code to HTTP status text
+// Status codes for mapping to text
 static const char* HTTPResponse_GetStatusText(HTTPStatusCode _StatusCode)
 {
     switch (_StatusCode) {
-        case HTTP_STATUS_200_OK:
+        case STATUS_OK:
             return "200 OK";
-        case HTTP_STATUS_400_BAD_REQUEST:
+        case STATUS_BAD_REQUEST:
             return "400 Bad Request";
-        case HTTP_STATUS_404_NOT_FOUND:
+        case STATUS_NOT_FOUND:
             return "404 Not Found";
-        case HTTP_STATUS_500_INTERNAL_SERVER_ERROR:
+        case STATUS_INTERNAL_SERVER_ERROR:
             return "500 Internal Server Error";
         default:
             return "500 Internal Server Error";
     }
 }
 
-int HTTPResponse_Initiate(HTTPResponse* _Response,
-                          HTTPStatusCode _StatusCode,
-                          const char* _ContentType,
-                          const char* _Body,
-                          size_t _BodyLength)
+int HTTPResponse_Initiate(HTTPResponse* _Response, HTTPStatusCode _StatusCode, const char* _ContentType, const char* _Body, size_t _BodyLength)
 {
     if (_Response == NULL || _ContentType == NULL) {
         return -1;
@@ -38,15 +35,16 @@ int HTTPResponse_Initiate(HTTPResponse* _Response,
     return 0;
 }
 
-int HTTPResponse_Send(const HTTPResponse* _Response, TCPClient* _TcpClient)
+
+int HTTPResponse_SetResponse(HTTPServerConnection* _Connection, const HTTPResponse* _Response)
 {
-    if (_Response == NULL || _TcpClient == NULL) {
+    if (_Connection == NULL || _Response == NULL) {
         return -1;
     }
 
     // Build HTTP header
     char header[512];
-    int header_len = snprintf(header, sizeof(header),
+    int headerLen = snprintf(header, sizeof(header),
                               "HTTP/1.1 %s\r\n"
                               "Content-Type: %s\r\n"
                               "Content-Length: %zu\r\n"
@@ -55,62 +53,69 @@ int HTTPResponse_Send(const HTTPResponse* _Response, TCPClient* _TcpClient)
                               _Response->contentType,
                               _Response->bodyLength);
 
-    if (header_len <= 0 || header_len >= sizeof(header)) {
+    if (headerLen <= 0 || headerLen >= sizeof(header)) {
         return -1;
     }
 
-    // Send header
-    int result = TCPClient_Write(_TcpClient, (uint8_t*)header, header_len);
-    if (result < 0) {
-        return result;
+    // Calculate total response size (header + body)
+    size_t totalSize = headerLen + _Response->bodyLength;
+
+    // Allocate buffer for complete response
+    char* responseBuffer = malloc(totalSize);
+    if (responseBuffer == NULL) {
+        return -1;
     }
 
-    // Send body if present
+    // Copy header to buffer
+    memcpy(responseBuffer, header, headerLen);
+
+    // Copy body to buffer if present
     if (_Response->body != NULL && _Response->bodyLength > 0) {
-        result = TCPClient_Write(_TcpClient, (uint8_t*)_Response->body, (int)_Response->bodyLength);
-        if (result < 0) {
-            return result;
-        }
+        memcpy(responseBuffer + headerLen, _Response->body, _Response->bodyLength);
     }
+
+    // Set the response on the connection and transfer ownership to the response buffer
+    HTTPServerConnection_SetResponse(_Connection, responseBuffer, totalSize);
+
+    // Free our temporary buffer
+    free(responseBuffer);
 
     return 0;
 }
 
-int HTTPResponse_SendError(TCPClient* _TcpClient,
-                           HTTPStatusCode _StatusCode,
-                           const char* _ErrorMessage)
+int HTTPResponse_SetErrorResponse(HTTPServerConnection* _Connection, HTTPStatusCode _StatusCode, const char* _ErrorMessage)
 {
-    if (_TcpClient == NULL || _ErrorMessage == NULL) {
+    if (_Connection == NULL || _ErrorMessage == NULL) {
         return -1;
     }
 
     // Format JSON error body
-    char json_body[256];
-    int json_len = snprintf(json_body, sizeof(json_body),
+    char jsonBody[256];
+    int jsonLen = snprintf(jsonBody, sizeof(jsonBody),
                            "{\"error\":\"%s\"}",
                            _ErrorMessage);
 
-    if (json_len <= 0 || json_len >= sizeof(json_body)) {
+    if (jsonLen <= 0 || jsonLen >= sizeof(jsonBody)) {
         return -1;
     }
 
-    // Create and send response
+    // Create and set response
     HTTPResponse response;
-    HTTPResponse_Initiate(&response, _StatusCode, "application/json", json_body, json_len);
+    HTTPResponse_Initiate(&response, _StatusCode, "application/json", jsonBody, jsonLen);
 
-    return HTTPResponse_Send(&response, _TcpClient);
+    return HTTPResponse_SetResponse(_Connection, &response);
 }
 
-int HTTPResponse_SendJson(TCPClient* _TcpClient, const char* _JsonBody)
+int HTTPResponse_SetJsonResponse(HTTPServerConnection* _Connection, const char* _JsonBody)
 {
-    if (_TcpClient == NULL || _JsonBody == NULL) {
+    if (_Connection == NULL || _JsonBody == NULL) {
         return -1;
     }
 
-    size_t json_len = strlen(_JsonBody);
+    size_t jsonLen = strlen(_JsonBody);
 
     HTTPResponse response;
-    HTTPResponse_Initiate(&response, HTTP_STATUS_200_OK, "application/json", _JsonBody, json_len);
+    HTTPResponse_Initiate(&response, STATUS_OK, "application/json", _JsonBody, jsonLen);
 
-    return HTTPResponse_Send(&response, _TcpClient);
+    return HTTPResponse_SetResponse(_Connection, &response);
 }

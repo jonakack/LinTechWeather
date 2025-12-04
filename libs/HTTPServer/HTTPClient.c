@@ -221,7 +221,7 @@ void HTTPClient_GeoCallback(HTTPClient* _Client, const char* _Event)
         }
         
         // Mark request as complete
-        _Client->weather_data->request_complete = 1;
+        _Client->weather_data->requestComplete = 1;
         
         HTTPClient_Dispose(_Client);
         free(_Client);
@@ -242,7 +242,7 @@ void HTTPClient_WeatherCallback(HTTPClient* _Client, const char* _Event)
         }
         
         // Mark request as complete
-        _Client->weather_data->request_complete = 1;
+        _Client->weather_data->requestComplete = 1;
         
         HTTPClient_Dispose(_Client);
         free(_Client);
