@@ -1,4 +1,4 @@
-# LinTechWeather TCP/HTTP Server/Client, API
+# TCP/HTTP Server/Client + API
 Under development.
 
 # Running Server Instructions
@@ -143,3 +143,4 @@ curl -l '127.0.0.1:8080/api/v1/invalidpath'
 
 
 96, 99 * Thunderstorm with slight and heavy hail
+
