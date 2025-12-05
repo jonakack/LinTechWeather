@@ -1,7 +1,7 @@
 #ifndef __HTTPServerConnection_h_
 #define __HTTPServerConnection_h_
 
-#include "smw.h"
+#include "TaskScheduler.h"
 #include "TCPClient.h"
 #include <stddef.h>
 
@@ -36,15 +36,16 @@ typedef struct
 	char* responseBuffer;
 	size_t responseLength;
 	size_t bytesSent;
-	int callbackInvoked; 
+	int callbackInvoked;
 
-	smw_task* task;
+	Task* task;
+	TaskScheduler* scheduler;  // Reference to task scheduler
 
 } HTTPServerConnection;
 
 
-int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD);
-int HTTPServerConnection_InitiatePtr(int _FD, HTTPServerConnection** _ConnectionPtr);
+int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, TaskScheduler* _Scheduler, int _FD);
+int HTTPServerConnection_InitiatePtr(int _FD, TaskScheduler* _Scheduler, HTTPServerConnection** _ConnectionPtr);
 
 void HTTPServerConnection_SetCallback(HTTPServerConnection* _Connection, void* _Context, HTTPServerConnection_OnRequest _OnRequest);
 void HTTPServerConnection_SetResponse(HTTPServerConnection* _Connection, const char* _Response, size_t _Length);

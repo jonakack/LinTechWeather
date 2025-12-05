@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "HTTPClient.h"
 #include "WeatherData.h"
-#include "utils.h"
+#include "Utils.h"
 
 WeatherData *WeatherData_ParseRequest(const char *_Url)
 {
@@ -97,7 +97,7 @@ char *WeatherData_HttpResponseToJson(const char *response)
         while (*line_start == '\r')
             line_start++;
 
-        // Check if we have hex digits
+        // Check if we have hex digits 
         for (char *p = line_start; p < first_newline && *p != '\r'; p++)
         {
             if (!((*p >= '0' && *p <= '9') || (*p >= 'a' && *p <= 'f') || (*p >= 'A' && *p <= 'F')))

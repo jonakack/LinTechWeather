@@ -10,8 +10,13 @@ void HTTPServerConnection_TaskWork(void* _Context, uint64_t _MonTime);
 
 //----------------------------------------------------
 
-int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
+int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, TaskScheduler* _Scheduler, int _FD)
 {
+	if(_Scheduler == NULL)
+		return -1;
+
+	_Connection->scheduler = _Scheduler;
+
 	TCPClient_Initiate(&_Connection->tcpClient, _FD);
 
 	// Initialize all fields
@@ -36,12 +41,12 @@ int HTTPServerConnection_Initiate(HTTPServerConnection* _Connection, int _FD)
 	if(_Connection->receiveBuffer == NULL)
 		return -1;
 
-	_Connection->task = smw_createTask(_Connection, HTTPServerConnection_TaskWork);
+	_Connection->task = TaskScheduler_CreateTask(_Scheduler, _Connection, HTTPServerConnection_TaskWork, TASK_PRIORITY_NORMAL);
 
 	return 0;
 }
 
-int HTTPServerConnection_InitiatePtr(int _FD, HTTPServerConnection** _ConnectionPtr)
+int HTTPServerConnection_InitiatePtr(int _FD, TaskScheduler* _Scheduler, HTTPServerConnection** _ConnectionPtr)
 {
 	if(_ConnectionPtr == NULL)
 		return -1;
@@ -50,7 +55,7 @@ int HTTPServerConnection_InitiatePtr(int _FD, HTTPServerConnection** _Connection
 	if(_Connection == NULL)
 		return -2;
 
-	int result = HTTPServerConnection_Initiate(_Connection, _FD);
+	int result = HTTPServerConnection_Initiate(_Connection, _Scheduler, _FD);
 	if(result != 0)
 	{
 		free(_Connection);
@@ -301,7 +306,7 @@ void HTTPServerConnection_Dispose(HTTPServerConnection* _Connection)
 
 	if(_Connection->task != NULL)
 	{
-		smw_destroyTask(_Connection->task);
+		TaskScheduler_DestroyTask(_Connection->scheduler, _Connection->task);
 		_Connection->task = NULL;
 	}
 }

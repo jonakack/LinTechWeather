@@ -1,6 +1,6 @@
 #include "WeatherRequest.h"
-#include "smw.h"
-#include "utils.h"
+#include "TaskScheduler.h"
+#include "Utils.h"
 
 RouteResult WeatherRequest_HandleRequest(HTTPServerConnection* _Connection)
 {
@@ -84,7 +84,8 @@ RouteResult WeatherRequest_HandleGeoRequest(HTTPServerConnection* _Connection, c
 
     // Create async context
     WeatherRequestContext* context = malloc(sizeof(WeatherRequestContext));
-    if (context == NULL) {
+    if (context == NULL) 
+    {
         WeatherData_Dispose(geoData);
         HTTPResponse_SetErrorResponse(_Connection,
                                      STATUS_INTERNAL_SERVER_ERROR,
@@ -93,13 +94,14 @@ RouteResult WeatherRequest_HandleGeoRequest(HTTPServerConnection* _Connection, c
     }
 
     context->connection = _Connection;
-    context->cacheConfig = geoCache;
+    context->cacheConfig = geoCache; 
     strncpy(context->cacheKey, geoData->city, sizeof(context->cacheKey) - 1);
     context->cacheKey[sizeof(context->cacheKey) - 1] = '\0';
 
     // Store context in HTTPClient (we'll use a custom wrapper)
     HTTPClient* client = malloc(sizeof(HTTPClient));
-    if (client == NULL) {
+    if (client == NULL)
+    {
         free(context);
         WeatherData_Dispose(geoData);
         HTTPResponse_SetErrorResponse(_Connection,
@@ -108,7 +110,7 @@ RouteResult WeatherRequest_HandleGeoRequest(HTTPServerConnection* _Connection, c
         return ROUTE_INTERNAL_ERROR;
     }
 
-    HTTPClient_Initiate(client);
+    HTTPClient_Initiate(client, _Connection->scheduler);
     strcpy(client->host, "geocoding-api.open-meteo.com");
     strcpy(client->port, "80");
     client->weather_data = geoData;
@@ -119,7 +121,8 @@ RouteResult WeatherRequest_HandleGeoRequest(HTTPServerConnection* _Connection, c
     char url[256];
     snprintf(url, sizeof(url), "/v1/search?name=%s", geoData->city);
 
-    if (HTTPClient_GET(client, url, WeatherRequest_OnGeoDataComplete) != 0) {
+    if (HTTPClient_GET(client, url, WeatherRequest_OnGeoDataComplete) != 0) 
+    {
         free(context);
         free(client);
         WeatherData_Dispose(geoData);
@@ -185,7 +188,8 @@ RouteResult WeatherRequest_HandleWeatherRequest(HTTPServerConnection* _Connectio
 
     // Create async context
     WeatherRequestContext* context = malloc(sizeof(WeatherRequestContext));
-    if (context == NULL) {
+    if (context == NULL) 
+    {
         WeatherData_Dispose(weatherData);
         HTTPResponse_SetErrorResponse(_Connection,
                                      STATUS_INTERNAL_SERVER_ERROR,
@@ -200,7 +204,8 @@ RouteResult WeatherRequest_HandleWeatherRequest(HTTPServerConnection* _Connectio
 
     // Store context in HTTPClient
     HTTPClient* client = malloc(sizeof(HTTPClient));
-    if (client == NULL) {
+    if (client == NULL)
+    {
         free(context);
         WeatherData_Dispose(weatherData);
         HTTPResponse_SetErrorResponse(_Connection,
@@ -209,7 +214,7 @@ RouteResult WeatherRequest_HandleWeatherRequest(HTTPServerConnection* _Connectio
         return ROUTE_INTERNAL_ERROR;
     }
 
-    HTTPClient_Initiate(client);
+    HTTPClient_Initiate(client, _Connection->scheduler);
     strcpy(client->host, "api.open-meteo.com");
     strcpy(client->port, "80");
     client->weather_data = weatherData;
@@ -219,7 +224,8 @@ RouteResult WeatherRequest_HandleWeatherRequest(HTTPServerConnection* _Connectio
     snprintf(url, sizeof(url), "/v1/forecast?latitude=%s&longitude=%s&current_weather=true",
              weatherData->latitude, weatherData->longitude);
 
-    if (HTTPClient_GET(client, url, WeatherRequest_OnWeatherDataComplete) != 0) {
+    if (HTTPClient_GET(client, url, WeatherRequest_OnWeatherDataComplete) != 0) 
+    {
         free(context);
         free(client);
         WeatherData_Dispose(weatherData);
@@ -241,7 +247,8 @@ void WeatherRequest_OnGeoDataComplete(HTTPClient* _Client, const char* _Event)
     }
 
     WeatherData* geoData = _Client->weather_data;
-    if (geoData == NULL || geoData->context == NULL) {
+    if (geoData == NULL || geoData->context == NULL) 
+    {
         // Something went wrong - cleanup what we can
         // HTTPClient task and buffer will be cleaned up by state machine
         return;
@@ -252,16 +259,19 @@ void WeatherRequest_OnGeoDataComplete(HTTPClient* _Client, const char* _Event)
     // Convert HTTP response to JSON
     char* jsonResponse = WeatherData_HttpResponseToJson((char*)_Client->buffer);
 
-    if (jsonResponse != NULL) {
+    if (jsonResponse != NULL) 
+    {
         // Save to cache
-        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) {
+        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) 
+        {
             printf("Warning: Failed to save geo data to cache\n");
         }
 
         // Set response on connection
         HTTPResponse_SetJsonResponse(context->connection, jsonResponse);
         free(jsonResponse);
-    } else {
+    } else 
+    {
         // Failed to parse response
         HTTPResponse_SetErrorResponse(context->connection,
                                      STATUS_INTERNAL_SERVER_ERROR,
@@ -274,13 +284,15 @@ void WeatherRequest_OnGeoDataComplete(HTTPClient* _Client, const char* _Event)
 
     // Cleanup HTTPClient - we do it here to avoid state machine trying to do it
     // Destroy task
-    if (_Client->task != NULL) {
-        smw_destroyTask(_Client->task);
+    if (_Client->task != NULL)
+    {
+        TaskScheduler_DestroyTask(_Client->scheduler, _Client->task);
         _Client->task = NULL;  // Prevent double-destroy in Close state
     }
 
     // Free buffer
-    if (_Client->buffer != NULL) {
+    if (_Client->buffer != NULL) 
+    {
         free(_Client->buffer);
         _Client->buffer = NULL;
     }
@@ -295,12 +307,14 @@ void WeatherRequest_OnGeoDataComplete(HTTPClient* _Client, const char* _Event)
 // Async callback for weather data completion
 void WeatherRequest_OnWeatherDataComplete(HTTPClient* _Client, const char* _Event)
 {
-    if (strcmp(_Event, "complete") != 0 || _Client == NULL) {
+    if (strcmp(_Event, "complete") != 0 || _Client == NULL) 
+    {
         return;
     }
 
     WeatherData* weatherData = _Client->weather_data;
-    if (weatherData == NULL || weatherData->context == NULL) {
+    if (weatherData == NULL || weatherData->context == NULL) 
+    {
         // Something went wrong - cleanup what we can
         // HTTPClient task and buffer will be cleaned up by state machine
         return;
@@ -311,9 +325,11 @@ void WeatherRequest_OnWeatherDataComplete(HTTPClient* _Client, const char* _Even
     // Convert HTTP response to JSON
     char* jsonResponse = WeatherData_HttpResponseToJson((char*)_Client->buffer);
 
-    if (jsonResponse != NULL) {
+    if (jsonResponse != NULL) 
+    {
         // Save to cache
-        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) {
+        if (Cache_Save(context->cacheKey, jsonResponse, &context->cacheConfig) != 0) 
+        {
             printf("Warning: Failed to save weather data to cache\n");
         }
 
@@ -333,13 +349,15 @@ void WeatherRequest_OnWeatherDataComplete(HTTPClient* _Client, const char* _Even
 
     // Cleanup HTTPClient - we do it here to avoid state machine trying to do it
     // Destroy task
-    if (_Client->task != NULL) {
-        smw_destroyTask(_Client->task);
+    if (_Client->task != NULL)
+    {
+        TaskScheduler_DestroyTask(_Client->scheduler, _Client->task);
         _Client->task = NULL;  // Prevent double-destroy in Close state
     }
 
     // Free buffer
-    if (_Client->buffer != NULL) {
+    if (_Client->buffer != NULL)
+    {
         free(_Client->buffer);
         _Client->buffer = NULL;
     }
@@ -371,7 +389,8 @@ int WeatherRequest_ParseHTTPRequest(const char* _RequestLine, HTTPRequest* _Pars
     
     // Get method (GET, POST, etc.)
     token = strtok(request_copy, " ");
-    if (token) {
+    if (token) 
+    {
         strncpy(_ParsedRequest->method, token, sizeof(_ParsedRequest->method) - 1);
     }
     

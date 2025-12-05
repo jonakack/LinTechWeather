@@ -8,18 +8,23 @@ int WeatherServer_OnHTTPConnection(void* _Context, HTTPServerConnection* _Connec
 
 //----------------------------------------------------
 
-int WeatherServer_Initiate(WeatherServer* _Server)
+int WeatherServer_Initiate(WeatherServer* _Server, TaskScheduler* _Scheduler)
 {
-	HTTPServer_Initiate(&_Server->httpServer, WeatherServer_OnHTTPConnection);
+	if(_Scheduler == NULL)
+		return -1;
+
+	_Server->scheduler = _Scheduler;
+
+	HTTPServer_Initiate(&_Server->httpServer, _Scheduler, WeatherServer_OnHTTPConnection);
 
 	_Server->instances = LinkedList_create();
 
-	_Server->task = smw_createTask(_Server, WeatherServer_TaskWork);
+	_Server->task = TaskScheduler_CreateTask(_Scheduler, _Server, WeatherServer_TaskWork, TASK_PRIORITY_NORMAL);
 
 	return 0;
 }
 
-int WeatherServer_InitiatePtr(WeatherServer** _ServerPtr)
+int WeatherServer_InitiatePtr(WeatherServer** _ServerPtr, TaskScheduler* _Scheduler)
 {
 	if(_ServerPtr == NULL)
 		return -1;
@@ -28,7 +33,7 @@ int WeatherServer_InitiatePtr(WeatherServer** _ServerPtr)
 	if(_Server == NULL)
 		return -2;
 
-	int result = WeatherServer_Initiate(_Server);
+	int result = WeatherServer_Initiate(_Server, _Scheduler);
 	if(result != 0)
 	{
 		free(_Server);
@@ -87,7 +92,7 @@ void WeatherServer_TaskWork(void* _Context, uint64_t _MonTime)
 void WeatherServer_Dispose(WeatherServer* _Server)
 {
 	HTTPServer_Dispose(&_Server->httpServer);
-	smw_destroyTask(_Server->task);
+	TaskScheduler_DestroyTask(_Server->scheduler, _Server->task);
 }
 
 void WeatherServer_DisposePtr(WeatherServer** _ServerPtr)

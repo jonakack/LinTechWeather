@@ -1,24 +1,28 @@
 #include <stdio.h>
-#include "smw.h"
-#include "utils.h"
+#include "TaskScheduler.h"
+#include "Utils.h"
 #include "WeatherServer.h"
 
 
 int main()
 {
-	smw_init();
+	TaskScheduler* scheduler = TaskScheduler_Create();
+	if(scheduler == NULL)
+	{
+		return -1; 
+	}
 
 	WeatherServer server;
-	WeatherServer_Initiate(&server);
+	WeatherServer_Initiate(&server, scheduler);
 
 	while(1)
 	{
-		smw_work(SystemMonotonicMS()); 
+		TaskScheduler_Work(scheduler, SystemMonotonicMS()); 
 	}
 
 	WeatherServer_Dispose(&server);
 
-	smw_dispose();
+	TaskScheduler_Dispose(&scheduler);
 
 	return 0;
 }

@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 
-#include "cache.h"
+#include "Cache.h"
 
 static int Cache_MkdirRecursive(const char* _Path)
 {

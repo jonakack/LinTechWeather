@@ -11,7 +11,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "smw.h"
+#include "TaskScheduler.h"
 
 #define MAX_CLIENTS 1000
 
@@ -24,13 +24,14 @@ typedef struct
 	TCPServer_OnAccept onAccept;
 	void* context;
 
-	smw_task* task;
+	Task* task;
+	TaskScheduler* scheduler;
 
 } TCPServer;
 
 
-int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context);
-int TCPServer_InitiatePtr(const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context, TCPServer** _ServerPtr);
+int TCPServer_Initiate(TCPServer* _Server, TaskScheduler* _Scheduler, const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context);
+int TCPServer_InitiatePtr(const char* _Port, TaskScheduler* _Scheduler, TCPServer_OnAccept _OnAccept, void* _Context, TCPServer** _ServerPtr);
 
 
 void TCPServer_Dispose(TCPServer* _Server);

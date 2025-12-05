@@ -7,8 +7,12 @@ void TCPServer_TaskWork(void* _Context, uint64_t _MonTime);
 
 //----------------------------------------------------
 
-int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context)
+int TCPServer_Initiate(TCPServer* _Server, TaskScheduler* _Scheduler, const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context)
 {
+	if(_Scheduler == NULL)
+		return -1;
+
+	_Server->scheduler = _Scheduler;
 	_Server->onAccept = _OnAccept;
 	_Server->context = _Context;
 
@@ -47,15 +51,15 @@ int TCPServer_Initiate(TCPServer* _Server, const char* _Port, TCPServer_OnAccept
 	}
 
 	TCPServer_Nonblocking(fd);
-	
+
 	_Server->listen_fd = fd;
 
-	_Server->task = smw_createTask(_Server, TCPServer_TaskWork);
+	_Server->task = TaskScheduler_CreateTask(_Scheduler, _Server, TCPServer_TaskWork, TASK_PRIORITY_HIGH);
 
 	return 0;
 }
 
-int TCPServer_InitiatePtr(const char* _Port, TCPServer_OnAccept _OnAccept, void* _Context, TCPServer** _ServerPtr)
+int TCPServer_InitiatePtr(const char* _Port, TaskScheduler* _Scheduler, TCPServer_OnAccept _OnAccept, void* _Context, TCPServer** _ServerPtr)
 {
 	if(_ServerPtr == NULL)
 		return -1;
@@ -64,7 +68,7 @@ int TCPServer_InitiatePtr(const char* _Port, TCPServer_OnAccept _OnAccept, void*
 	if(_Server == NULL)
 		return -2;
 
-	int result = TCPServer_Initiate(_Server, _Port, _OnAccept, _Context);
+	int result = TCPServer_Initiate(_Server, _Scheduler, _Port, _OnAccept, _Context);
 	if(result != 0)
 	{
 		free(_Server);
@@ -109,8 +113,8 @@ void TCPServer_Dispose(TCPServer* _Server)
 		close(_Server->listen_fd);
 		_Server->listen_fd = -1;
 	}
-	
-	smw_destroyTask(_Server->task);
+
+	TaskScheduler_DestroyTask(_Server->scheduler, _Server->task);
 }
 
 void TCPServer_DisposePtr(TCPServer** _ServerPtr)

@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stddef.h>
 #include "WeatherRequest.h"
-#include "smw.h"
-#include "utils.h"
+#include "TaskScheduler.h"
+#include "Utils.h"
 #include "HTTPServerConnection.h"
 #include "WeatherData.h"
 

@@ -106,16 +106,20 @@ void HTTPClient_Work(void* _Context, uint64_t _MonTime)
         case HTTPClient_State_Close:
             printf("HTTPClient: Closing connection\n");
             TCPClient_Disconnect(&client->tcpClient);
-            smw_destroyTask(client->task);
+            TaskScheduler_DestroyTask(client->scheduler, client->task);
             client->task = NULL;
             break;
     }
 }
 
-int HTTPClient_Initiate(HTTPClient* _Client)
+int HTTPClient_Initiate(HTTPClient* _Client, TaskScheduler* _Scheduler)
 {
+    if(_Scheduler == NULL)
+        return -1;
+
     memset(_Client, 0, sizeof(HTTPClient));
-    
+
+    _Client->scheduler = _Scheduler;
     _Client->buffer = NULL;
     _Client->task = NULL;
     _Client->state = HTTPClient_State_Init;
@@ -143,67 +147,67 @@ int HTTPClient_GET(HTTPClient* _Client, const char* _URL, void (*callback)(HTTPC
 
     printf("HTTPClient: Starting request: %s\n", (char*)_Client->buffer);
 
-    _Client->task = smw_createTask(_Client, HTTPClient_Work);
-    
+    _Client->task = TaskScheduler_CreateTask(_Client->scheduler, _Client, HTTPClient_Work, TASK_PRIORITY_NORMAL);
+
     return 0;
 }
 
 void HTTPClient_Dispose(HTTPClient* _Client)
 {
     if(_Client->task != NULL)
-        smw_destroyTask(_Client->task);
+        TaskScheduler_DestroyTask(_Client->scheduler, _Client->task);
 
     if(_Client->buffer != NULL)
         free(_Client->buffer);
-        
+
     TCPClient_Disconnect(&_Client->tcpClient);
     memset(_Client, 0, sizeof(HTTPClient));
 }
 
 // Wrapper for geo data
-int HTTPClient_GetGeoData(WeatherData* _Data)
+int HTTPClient_GetGeoData(WeatherData* _Data, TaskScheduler* _Scheduler)
 {
-    if (_Data == NULL || _Data->city == NULL) {
+    if (_Data == NULL || _Data->city == NULL || _Scheduler == NULL) {
         return -1;
     }
 
     HTTPClient* client = malloc(sizeof(HTTPClient));
     if (!client) return -1;
-    
-    HTTPClient_Initiate(client);
-    
+
+    HTTPClient_Initiate(client, _Scheduler);
+
     // Set host and store reference to data
     strcpy(client->host, "geocoding-api.open-meteo.com");
     strcpy(client->port, "80");
     client->weather_data = _Data;
-    
+
     char url[256];
     snprintf(url, sizeof(url), "/v1/search?name=%s", _Data->city);
-    
+
     return HTTPClient_GET(client, url, HTTPClient_GeoCallback);
 }
 
 // Wrapper for weather data
-int HTTPClient_GetWeatherData(WeatherData* _Data)
+int HTTPClient_GetWeatherData(WeatherData* _Data, TaskScheduler* _Scheduler)
 {
-    if (_Data == NULL || _Data->latitude == NULL || _Data->longitude == NULL) {
+    if (_Data == NULL || _Data->latitude == NULL || _Data->longitude == NULL || _Scheduler == NULL) {
         return -1;
     }
 
     HTTPClient* client = malloc(sizeof(HTTPClient));
     if (!client) return -1;
-    
-    HTTPClient_Initiate(client);
-    
+
+    HTTPClient_Initiate(client, _Scheduler);
+
     // Set host and store reference to data
     strcpy(client->host, "api.open-meteo.com");
     strcpy(client->port, "80");
     client->weather_data = _Data;
-    
+
     char url[256];
-    snprintf(url, sizeof(url), "/v1/forecast?latitude=%s&longitude=%s&current_weather=true", 
+    snprintf(url, sizeof(url), "/v1/forecast?latitude=%s&longitude=%s&current_weather=true",
              _Data->latitude, _Data->longitude);
-    
+
     return HTTPClient_GET(client, url, HTTPClient_WeatherCallback);
 }
 

@@ -1,7 +1,7 @@
 #ifndef __HTTPServer_h_
 #define __HTTPServer_h_
 
-#include "smw.h"
+#include "TaskScheduler.h"
 #include "HTTPServerConnection.h"
 #include "TCPServer.h"
 
@@ -17,13 +17,14 @@ typedef struct
 	HTTPServer_OnConnection onConnection;
 
 	TCPServer tcpServer;
-	smw_task* task;
+	Task* task;
+	TaskScheduler* scheduler;  // Reference to task scheduler
 
 } HTTPServer;
 
 
-int HTTPServer_Initiate(HTTPServer* _Server, HTTPServer_OnConnection _OnConnection);
-int HTTPServer_InitiatePtr(HTTPServer_OnConnection _OnConnection, HTTPServer** _ServerPtr);
+int HTTPServer_Initiate(HTTPServer* _Server, TaskScheduler* _Scheduler, HTTPServer_OnConnection _OnConnection);
+int HTTPServer_InitiatePtr(HTTPServer_OnConnection _OnConnection, TaskScheduler* _Scheduler, HTTPServer** _ServerPtr);
 
 
 void HTTPServer_Dispose(HTTPServer* _Server);

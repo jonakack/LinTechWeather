@@ -8,8 +8,8 @@
 #include "HTTPServerConnection.h"
 #include "WeatherData.h"
 #include "HTTPClient.h"
-#include "cache.h"
-#include "utils.h"
+#include "Cache.h"
+#include "Utils.h"
 
 // Routing result codes
 typedef enum {
